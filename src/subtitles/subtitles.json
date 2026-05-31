@@ -1,0 +1,152 @@
+[
+  {
+    "start": "400",
+    "end": "700",
+    "text": "My name is Koh Tze Rui"
+  },
+  {
+    "start": "700",
+    "end": "900",
+    "text": "I'm a Year 3 Computer Engineering student at NUS"
+  },
+  {
+    "start": "1000",
+    "end": "1200",
+    "text": "I always knew I wanted to be an engineer."
+  },
+  {
+    "start": "1200",
+    "end": "1400",
+    "text": "I was naturally drawn to hard problems,"
+  },
+  {
+    "start": "1600",
+    "end": "1800",
+    "text": "chasing the intellectual high of figuring things out."
+  },
+  {
+    "start": "2000",
+    "end": "2300",
+    "text": "So I did what every aspiring engineer does—I tried everything."
+  },
+  {
+    "start": "2400",
+    "end": "2500",
+    "text": "Software engineering. Containerisation. Abstraction."
+  },
+  {
+    "start": "2600",
+    "end": "2800",
+    "text": "Then quant. Algorithm books. Chasing the money. 💸"
+  },
+  {
+    "start": "2900",
+    "end": "3300",
+    "text": "But after two years of grinding through national service and into university..."
+  },
+  {
+    "start": "3400",
+    "end": "3700",
+    "text": "I just got really bored."
+  },
+  {
+    "start": "3800",
+    "end": "4000",
+    "text": "By Year 1, I'd quietly stepped away from engineering. 😶"
+  },
+  {
+    "start": "4500",
+    "end": "4700",
+    "text": "Then one day, a friend sent me a link."
+  },
+  {
+    "start": "4800",
+    "end": "5100",
+    "text": "An HPC competition. Build a single board computer cluster."
+  },
+  {
+    "start": "5100",
+    "end": "5400",
+    "text": "I thought—why not?"
+  },
+  {
+    "start": "5400",
+    "end": "5700",
+    "text": "And the rest was history. 🚀"
+  },
+  {
+    "start": "6500",
+    "end": "6800",
+    "text": "Turns out, what I needed wasn't a different field."
+  },
+  {
+    "start": "6800",
+    "end": "7000",
+    "text": "It was a harder problem."
+  },
+  {
+    "start": "7000",
+    "end": "7300",
+    "text": "Grinding through the night to chase the last bit of performance in the system."
+  },
+  {
+    "start": "7300",
+    "end": "7600",
+    "text": "That's the kind of challenge that keeps me alive. 🔥"
+  },
+  {
+    "start": "7600",
+    "end": "7900",
+    "text": "I think my slightly competitive personality helped a bit."
+  },
+  {
+    "start": "7900",
+    "end": "8000",
+    "text": "(okay... maybe more than a bit)"
+  },
+  {
+    "start": "8000",
+    "end": "8600",
+    "text": "Sometimes you don't find your path by walking forward. You find it by getting bored enough to look sideways.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  },
+  {
+    "start": "8600",
+    "end": "9200",
+    "text": "Every dead end taught me something. Every detour shaped what I was actually looking for.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  },
+  {
+    "start": "9200",
+    "end": "10400",
+    "text": "Keep chasing the problem that won't let you sleep.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  },
+  {
+    "start": "11100",
+    "end": "11800",
+    "text": "I used to think engineers were the ones who built the most.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  },
+  {
+    "start": "11800",
+    "end": "13000",
+    "text": "Now I think they're the ones who refuse to stop until it's right.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  }
+]

@@ -1,0 +1,5 @@
+{
+  "buildCommand": "yarn install && yarn build && cd developer-playbook-ai-era && yarn install && yarn build && cp -r dist ../public/developer-playbook-ai-era",
+  "installCommand": "yarn install",
+  "outputDirectory": "public"
+}
