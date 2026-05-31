@@ -7,7 +7,7 @@
   {
     "start": "700",
     "end": "900",
-    "text": "I'm a Year 3 Computer Engineering student at NUS"
+    "text": "Year 3 Computer Engineering student at NUS"
   },
   {
     "start": "1000",
@@ -17,97 +17,82 @@
   {
     "start": "1200",
     "end": "1400",
-    "text": "I was naturally drawn to hard problems,"
+    "text": "Chasing hard problems. Chasing that intellectual high."
   },
   {
-    "start": "1600",
-    "end": "1800",
-    "text": "chasing the intellectual high of figuring things out."
+    "start": "1500",
+    "end": "1750",
+    "text": "So I tried everything."
+  },
+  {
+    "start": "1750",
+    "end": "2000",
+    "text": "SWE. Containerisation. Abstraction."
   },
   {
     "start": "2000",
-    "end": "2300",
-    "text": "So I did what every aspiring engineer does—I tried everything."
-  },
-  {
-    "start": "2400",
-    "end": "2500",
-    "text": "Software engineering. Containerisation. Abstraction."
+    "end": "2400",
+    "text": "Then quant — algorithm books, grinding, chasing the money. 💸"
   },
   {
     "start": "2600",
-    "end": "2800",
-    "text": "Then quant. Algorithm books. Chasing the money. 💸"
+    "end": "3100",
+    "text": "After two years of this — during national service and into uni..."
   },
   {
-    "start": "2900",
-    "end": "3300",
-    "text": "But after two years of grinding through national service and into university..."
-  },
-  {
-    "start": "3400",
-    "end": "3700",
+    "start": "3200",
+    "end": "3600",
     "text": "I just got really bored."
   },
   {
-    "start": "3800",
+    "start": "3700",
     "end": "4000",
     "text": "By Year 1, I'd quietly stepped away from engineering. 😶"
   },
   {
-    "start": "4500",
+    "start": "4300",
     "end": "4700",
+    "text": "I didn't know what I was looking for."
+  },
+  {
+    "start": "4700",
+    "end": "5100",
+    "text": "Just knew none of it felt like enough."
+  },
+  {
+    "start": "5200",
+    "end": "5700",
     "text": "Then one day, a friend sent me a link."
   },
   {
-    "start": "4800",
-    "end": "5100",
+    "start": "5800",
+    "end": "6100",
     "text": "An HPC competition. Build a single board computer cluster."
   },
   {
-    "start": "5100",
-    "end": "5400",
-    "text": "I thought—why not?"
+    "start": "6200",
+    "end": "6500",
+    "text": "I thought — why not?"
   },
   {
-    "start": "5400",
-    "end": "5700",
-    "text": "And the rest was history. 🚀"
-  },
-  {
-    "start": "6500",
-    "end": "6800",
-    "text": "Turns out, what I needed wasn't a different field."
-  },
-  {
-    "start": "6800",
+    "start": "6600",
     "end": "7000",
-    "text": "It was a harder problem."
+    "text": "And just like that, the lights came back on. 💡"
   },
   {
-    "start": "7000",
-    "end": "7300",
-    "text": "Grinding through the night to chase the last bit of performance in the system."
-  },
-  {
-    "start": "7300",
+    "start": "7200",
     "end": "7600",
-    "text": "That's the kind of challenge that keeps me alive. 🔥"
+    "text": "Grinding through the night to chase the last bit of performance."
   },
   {
-    "start": "7600",
-    "end": "7900",
-    "text": "I think my slightly competitive personality helped a bit."
-  },
-  {
-    "start": "7900",
+    "start": "7700",
     "end": "8000",
-    "text": "(okay... maybe more than a bit)"
+    "text": "That's the kind of challenge that keeps me alive. 🔥"
   },
   {
     "start": "8000",
     "end": "8600",
-    "text": "Sometimes you don't find your path by walking forward. You find it by getting bored enough to look sideways.",
+    "text": "Sometimes you don't find your path by walking forward.",
     "position": {
       "portrait": "bottom",
       "landscape": "bottom"
@@ -116,6 +101,15 @@
   {
     "start": "8600",
     "end": "9200",
+    "text": "You find it by getting bored enough to look sideways.",
+    "position": {
+      "portrait": "bottom",
+      "landscape": "bottom"
+    }
+  },
+  {
+    "start": "9400",
+    "end": "10200",
     "text": "Every dead end taught me something. Every detour shaped what I was actually looking for.",
     "position": {
       "portrait": "bottom",
@@ -123,8 +117,8 @@
     }
   },
   {
-    "start": "9200",
-    "end": "10400",
+    "start": "10400",
+    "end": "11200",
     "text": "Keep chasing the problem that won't let you sleep.",
     "position": {
       "portrait": "bottom",
@@ -132,8 +126,8 @@
     }
   },
   {
-    "start": "11100",
-    "end": "11800",
+    "start": "11500",
+    "end": "12200",
     "text": "I used to think engineers were the ones who built the most.",
     "position": {
       "portrait": "bottom",
@@ -141,8 +135,8 @@
     }
   },
   {
-    "start": "11800",
-    "end": "13000",
+    "start": "12300",
+    "end": "13200",
     "text": "Now I think they're the ones who refuse to stop until it's right.",
     "position": {
       "portrait": "bottom",

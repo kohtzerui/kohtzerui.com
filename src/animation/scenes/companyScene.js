@@ -1,43 +1,21 @@
 /**
  * COMPANY SCENE ANIMATIONS
  *
- * Handles the corporate work phase with company logos,
- * environment transitions, and explosive elements.
- *
- * TIME: 1200ms - 1600ms (company scene phase)
- * ELEMENTS: company logos, corporate environment, desk explosions
+ * In this adapted story, the "company" moment maps to the boredom/explosion beat —
+ * the point where SWE and quant stopped being interesting.
+ * Company logos have been removed as they were specific to the original author.
  */
 
 /**
- * Creates company logo animations with sequential appearance
- * Each logo draws and then fades away
+ * Company logos hidden — not relevant to this story
  */
 export const createCompanyLogoAnimations = (
   SCENE_TIMING,
   drawStrokesAndHide
 ) => {
-  const [startTime] = SCENE_TIMING.company;
-  const logoAnimations = [];
-
-  // Pre-calculate the drawStrokesAndHide animation to avoid repeated function calls
-  const baseLogoAnimation = { delay: 0, duration: 60, opacity: 0.25 };
-
-  for (let i = 1; i <= 10; i++) {
-    const selector = i === 1 ? "logo1" : `logo${i} *`;
-    const currentDelay = startTime + (i - 1) * 50;
-
-    logoAnimations.push([
-      selector,
-      drawStrokesAndHide(
-        currentDelay,
-        baseLogoAnimation.duration,
-        baseLogoAnimation.opacity
-      ),
-    ]);
-  }
-
-  return logoAnimations;
+  return []; // logos removed
 };
+
 
 /**
  * Creates company environment animations
