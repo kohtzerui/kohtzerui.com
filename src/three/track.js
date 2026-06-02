@@ -110,15 +110,90 @@ export function createTrack(scene) {
   dashLine.computeLineDistances();
   scene.add(dashLine);
 
-  // ── Start / finish stripe ──────────────────────────────────────
-  const sfPos = curve.getPoint(0);
-  const sfTan = curve.getTangent(0).normalize();
-  const sfGeo = new THREE.PlaneGeometry(TRACK_WIDTH, 1.5);
-  sfGeo.rotateX(-Math.PI / 2);
-  const sfMesh = new THREE.Mesh(sfGeo, new THREE.MeshBasicMaterial({ color: 0xffffff }));
-  sfMesh.position.set(sfPos.x, 0.02, sfPos.z);
-  sfMesh.rotation.y = Math.atan2(sfTan.x, sfTan.z);
-  scene.add(sfMesh);
+  // ── START line — white stripe with "START" text ────────────────
+  (function placeStartLine() {
+    const pos = curve.getPoint(0);
+    const tan = curve.getTangent(0).normalize();
+
+    // Road texture: white with bold orange "START" text
+    const cv = document.createElement('canvas');
+    cv.width = 512; cv.height = 128;
+    const cx2 = cv.getContext('2d');
+    cx2.fillStyle = '#ffffff';
+    cx2.fillRect(0, 0, 512, 128);
+    cx2.fillStyle = '#ff7b00';
+    cx2.font = 'bold 96px monospace';
+    cx2.textAlign = 'center';
+    cx2.textBaseline = 'middle';
+    cx2.fillText('START', 256, 64);
+    const tex = new THREE.CanvasTexture(cv);
+
+    const geo = new THREE.PlaneGeometry(TRACK_WIDTH, 4);
+    geo.rotateX(-Math.PI / 2);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex }));
+    mesh.position.set(pos.x, 0.025, pos.z);
+    mesh.rotation.y = Math.atan2(tan.x, tan.z);
+    scene.add(mesh);
+
+    // Orange glow overhead
+    const light = new THREE.PointLight(0xff7b00, 6, 70);
+    light.position.set(pos.x, 16, pos.z);
+    scene.add(light);
+  })();
+
+  // ── FINISH gantry — 3D arch + checkered banner ─────────────────
+  (function placeFinishGantry() {
+    const pos  = curve.getPoint(0.99);
+    const tan  = curve.getTangent(0.99).normalize();
+    const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
+
+    const poleH   = 22;      // pole height
+    const halfW   = TRACK_WIDTH / 2 + 2;  // half-span (slightly wider than track)
+    const poleGeo = new THREE.CylinderGeometry(0.5, 0.5, poleH, 8);
+    const poleMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.7, roughness: 0.3 });
+
+    // Left and right poles
+    [-1, 1].forEach(sign => {
+      const base = pos.clone().addScaledVector(side, sign * halfW);
+      const pole = new THREE.Mesh(poleGeo, poleMat);
+      pole.position.set(base.x, poleH / 2, base.z);
+      scene.add(pole);
+    });
+
+    // Horizontal crossbeam
+    const beamGeo = new THREE.BoxGeometry(halfW * 2, 1, 1);
+    const beam    = new THREE.Mesh(beamGeo, poleMat);
+    beam.position.set(pos.x, poleH, pos.z);
+    beam.rotation.y = Math.atan2(tan.x, tan.z);
+    scene.add(beam);
+
+    // Checkered banner hanging from beam
+    const cols = 10, rows = 3;
+    const bannerSize = 256;
+    const cw2 = bannerSize / cols, ch2 = bannerSize / rows;
+    const cv2 = document.createElement('canvas');
+    cv2.width = cv2.height = bannerSize;
+    const ctx2 = cv2.getContext('2d');
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        ctx2.fillStyle = (r + c) % 2 === 0 ? '#ffffff' : '#111111';
+        ctx2.fillRect(c * cw2, r * ch2, cw2, ch2);
+      }
+    }
+    const bannerTex = new THREE.CanvasTexture(cv2);
+    const bannerH   = rows * 1.8;
+    const bannerGeo = new THREE.PlaneGeometry(halfW * 2, bannerH);
+    const bannerMat = new THREE.MeshBasicMaterial({ map: bannerTex, side: THREE.DoubleSide });
+    const banner    = new THREE.Mesh(bannerGeo, bannerMat);
+    banner.position.set(pos.x, poleH - bannerH / 2 - 0.6, pos.z);
+    banner.rotation.y = Math.atan2(tan.x, tan.z);
+    scene.add(banner);
+
+    // Bright white spotlight on gantry
+    const light = new THREE.PointLight(0xffffff, 10, 90);
+    light.position.set(pos.x, poleH + 4, pos.z);
+    scene.add(light);
+  })();
 
 
   // ── Track-side lamp posts ──────────────────────────────────────
