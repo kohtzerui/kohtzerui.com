@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Singapore GP — Track Point Editor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #04040e; color: #e4e4e8; font-family: 'JetBrains Mono', monospace; display: flex; height: 100vh; overflow: hidden; }
+
+  #sidebar {
+    width: 320px; min-width: 320px;
+    background: #07070f;
+    border-right: 1px solid rgba(0,255,204,0.15);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  #sidebar h2 {
+    padding: 14px 16px;
+    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
+    color: #00ffcc;
+    border-bottom: 1px solid rgba(0,255,204,0.15);
+  }
+  #instructions {
+    padding: 10px 16px;
+    font-size: 10px; color: #666680; line-height: 1.6;
+    border-bottom: 1px solid rgba(0,255,204,0.1);
+  }
+  #instructions b { color: #00ffcc; }
+  #point-list {
+    flex: 1; overflow-y: auto;
+    padding: 8px 0;
+  }
+  .point-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 4px 12px;
+    cursor: pointer;
+    font-size: 10px;
+    border-left: 3px solid transparent;
+    transition: all 0.1s;
+  }
+  .point-row:hover { background: rgba(0,255,204,0.05); }
+  .point-row.selected { background: rgba(0,255,204,0.1); border-left-color: #00ffcc; }
+  .pt-idx { width: 28px; color: #444466; }
+  .pt-label { flex: 1; color: #888899; font-size: 9px; }
+  .pt-coords { color: #00ddaa; font-size: 9px; }
+
+  #edit-panel {
+    padding: 12px 16px;
+    border-top: 1px solid rgba(0,255,204,0.15);
+    background: #050510;
+  }
+  #edit-panel h3 { font-size: 10px; color: #00ffcc; letter-spacing: 2px; margin-bottom: 10px; }
+  .edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .edit-row label { font-size: 10px; color: #666680; width: 14px; }
+  .edit-row input[type=range] { flex: 1; accent-color: #00ffcc; }
+  .edit-row input[type=number] {
+    width: 80px; background: #0c0c1e; border: 1px solid rgba(0,255,204,0.3);
+    color: #00ffcc; padding: 4px 6px; font-size: 11px; font-family: inherit;
+    border-radius: 3px; outline: none;
+  }
+  .edit-row input[type=number]:focus { border-color: #00ffcc; }
+  #export-btn {
+    width: 100%; margin-top: 10px; padding: 8px;
+    background: rgba(0,255,204,0.1); border: 1px solid #00ffcc;
+    color: #00ffcc; font-family: inherit; font-size: 10px; letter-spacing: 2px;
+    text-transform: uppercase; cursor: pointer; border-radius: 3px;
+    transition: background 0.2s;
+  }
+  #export-btn:hover { background: rgba(0,255,204,0.2); }
+
+  #canvas-wrap { flex: 1; position: relative; overflow: hidden; }
+  canvas#track { width: 100%; height: 100%; cursor: crosshair; }
+
+  #status {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    font-size: 9px; color: #444466; letter-spacing: 2px;
+    background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px;
+    pointer-events: none;
+  }
+
+  #output-modal {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.85); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  #output-modal.show { display: flex; }
+  #output-box {
+    background: #07070f; border: 1px solid #00ffcc;
+    border-radius: 6px; padding: 20px; width: 720px; max-height: 80vh;
+    display: flex; flex-direction: column; gap: 12px;
+  }
+  #output-box h3 { font-size: 11px; color: #00ffcc; letter-spacing: 3px; }
+  #output-text {
+    flex: 1; overflow-y: auto; background: #020210;
+    border: 1px solid rgba(0,255,204,0.2); padding: 12px;
+    font-size: 10px; color: #aaffdd; line-height: 1.8;
+    white-space: pre; border-radius: 3px;
+  }
+  .modal-btns { display: flex; gap: 10px; }
+  .modal-btns button {
+    flex: 1; padding: 8px; background: rgba(0,255,204,0.1);
+    border: 1px solid #00ffcc; color: #00ffcc; font-family: inherit;
+    font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; border-radius: 3px;
+  }
+  .modal-btns button:hover { background: rgba(0,255,204,0.2); }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h2>🏎 Track Editor</h2>
+  <div id="instructions">
+    <b>Click</b> a point on the canvas or in the list to select it.<br>
+    <b>Drag</b> a selected point to reposition it.<br>
+    <b>Export</b> to copy the updated circuit.js code.<br><br>
+    Coordinate system: <b>X</b> = east (right), <b>Z</b> = south (down).<br>
+    Negative Z = north (top of map).
+  </div>
+  <div id="point-list"></div>
+  <div id="edit-panel">
+    <h3>SELECTED POINT</h3>
+    <div class="edit-row">
+      <label>X</label>
+      <input type="number" id="inp-x" step="5">
+    </div>
+    <div class="edit-row">
+      <label>Z</label>
+      <input type="number" id="inp-z" step="5">
+    </div>
+    <button id="export-btn">⬇ Export circuit.js code</button>
+  </div>
+</div>
+
+<div id="canvas-wrap">
+  <canvas id="track"></canvas>
+  <div id="status">click a point to select • drag to move</div>
+</div>
+
+<div id="output-modal">
+  <div id="output-box">
+    <h3>📋 COPY INTO src/game/circuit.js</h3>
+    <div id="output-text"></div>
+    <div class="modal-btns">
+      <button onclick="navigator.clipboard.writeText(document.getElementById('output-text').textContent).then(()=>this.textContent='✓ Copied!')">Copy to clipboard</button>
+      <button onclick="document.getElementById('output-modal').classList.remove('show')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const pts = [
+  { x:  615, z:   10, label: '0 START/FINISH',    sharp: true  },
+  { x:  590, z: -460, label: '1 T2 apex',          sharp: false },
+  { x:  505, z: -495, label: '2 T3 apex',          sharp: false },
+  { x:  445, z: -525, label: '3 T3 mid-exit',      sharp: false },
+  { x:  420, z: -430, label: '4',                  sharp: false },
+  { x:  450, z: -145, label: '5',                  sharp: false },
+  { x: -100, z: -235, label: '6 T6 exit',          sharp: false },
+  { x: -410, z: -375, label: '7 T7 exit',          sharp: false },
+  { x: -505, z: -210, label: '8 T8 apex',          sharp: true  },
+  { x: -550, z: -240, label: '9',                  sharp: false },
+  { x: -645, z: -385, label: '10 T9 mid',          sharp: false },
+  { x: -700, z: -410, label: '11 T9 apex',         sharp: false },
+  { x: -775, z: -265, label: '12',                 sharp: false },
+  { x: -850, z:  -75, label: '13 T10 apex',        sharp: false },
+  { x: -750, z:    5, label: '14 T10 exit',        sharp: false },
+  { x: -735, z:   70, label: '15 T11',             sharp: false },
+  { x: -615, z:  175, label: '16 T12',             sharp: false },
+  { x: -565, z:  200, label: '17',                 sharp: false },
+  { x: -545, z:  165, label: '18',                 sharp: false },
+  { x: -545, z:   15, label: '19',                 sharp: false },
+  { x: -490, z: -135, label: '20 T14 approach',   sharp: false },
+  { x: -345, z:   10, label: '21 T14 exit',        sharp: false },
+  { x:   90, z:   20, label: '22',                 sharp: false },
+  { x:  150, z:  125, label: '23',                 sharp: false },
+  { x:  535, z:  115, label: '24 T18',             sharp: false },
+];
+
+
+// ── Canvas setup ────────────────────────────────────────────────────
+const canvas = document.getElementById('track');
+const ctx    = canvas.getContext('2d');
+
+let selectedIdx = -1;
+let dragging    = false;
+let dragStart   = null;
+
+function resize() {
+  const wrap = canvas.parentElement;
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  draw();
+}
+window.addEventListener('resize', resize);
+
+// ── World → canvas transform ────────────────────────────────────────
+function getTransform() {
+  const PAD = 50;
+  const W   = canvas.width - PAD * 2;
+  const H   = canvas.height - PAD * 2;
+  const minX = Math.min(...pts.map(p => p.x)) - 40;
+  const maxX = Math.max(...pts.map(p => p.x)) + 40;
+  const minZ = Math.min(...pts.map(p => p.z)) - 40;
+  const maxZ = Math.max(...pts.map(p => p.z)) + 40;
+  const scaleX = W / (maxX - minX);
+  const scaleZ = H / (maxZ - minZ);
+  const scale  = Math.min(scaleX, scaleZ);
+  const offX   = PAD + (W - (maxX - minX) * scale) / 2;
+  const offZ   = PAD + (H - (maxZ - minZ) * scale) / 2;
+  return { minX, minZ, scale, offX, offZ };
+}
+
+function worldToCanvas(x, z) {
+  const { minX, minZ, scale, offX, offZ } = getTransform();
+  return { cx: offX + (x - minX) * scale, cy: offZ + (z - minZ) * scale };
+}
+
+function canvasToWorld(cx, cy) {
+  const { minX, minZ, scale, offX, offZ } = getTransform();
+  return { x: (cx - offX) / scale + minX, z: (cy - offZ) / scale + minZ };
+}
+
+// ── Catmull-Rom spline ──────────────────────────────────────────────
+function catmullRomPoint(p0, p1, p2, p3, t, tension=0.12) {
+  const t2 = t * t, t3 = t2 * t;
+  const s  = (1 - tension) / 2;
+  return {
+    x: s*(-p0.x+3*p1.x-3*p2.x+p3.x)*t3 + s*(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + s*(-p0.x+p2.x)*t + p1.x,
+    z: s*(-p0.z+3*p1.z-3*p2.z+p3.z)*t3 + s*(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2 + s*(-p0.z+p2.z)*t + p1.z,
+  };
+}
+
+// ── Draw ────────────────────────────────────────────────────────────
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  // Background grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
+  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+
+  // Spline path (smooth)
+  const STEPS = 8;
+  const n = pts.length;
+  ctx.beginPath();
+  let first = true;
+  for (let i = 0; i < n; i++) {
+    const p0 = pts[(i - 1 + n) % n];
+    const p1 = pts[i];
+    const p2 = pts[(i + 1) % n];
+    const p3 = pts[(i + 2) % n];
+    for (let s = 0; s < STEPS; s++) {
+      const pt = catmullRomPoint(p0, p1, p2, p3, s / STEPS);
+      const { cx, cy } = worldToCanvas(pt.x, pt.z);
+      first ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+      first = false;
+    }
+  }
+  const start = worldToCanvas(pts[0].x, pts[0].z);
+  ctx.lineTo(start.cx, start.cy);
+
+  // Track width indicator
+  ctx.strokeStyle = 'rgba(0,255,204,0.18)';
+  ctx.lineWidth   = getTransform().scale * 22; // 22 units wide
+  ctx.stroke();
+
+  // Center line
+  ctx.strokeStyle = 'rgba(0,255,204,0.7)';
+  ctx.lineWidth   = 1.5;
+  ctx.stroke();
+
+  // Control point connections
+  ctx.strokeStyle = 'rgba(0,255,204,0.12)';
+  ctx.lineWidth   = 1;
+  ctx.setLineDash([3, 5]);
+  ctx.beginPath();
+  pts.forEach((p, i) => {
+    const { cx, cy } = worldToCanvas(p.x, p.z);
+    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
+  });
+  ctx.closePath();
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Control points
+  pts.forEach((p, i) => {
+    const { cx, cy } = worldToCanvas(p.x, p.z);
+    const sel = i === selectedIdx;
+
+    if (sel) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(0,255,204,0.2)';
+      ctx.fill();
+    }
+
+    // Draw point — diamond for sharp, circle for smooth
+    ctx.beginPath();
+    if (p.sharp) {
+      // Diamond shape = sharp corner indicator
+      const r = sel ? 7 : 5;
+      ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
+      ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy);
+      ctx.closePath();
+      ctx.fillStyle = sel ? '#ffdd00' : 'rgba(255,200,0,0.85)';
+    } else {
+      ctx.arc(cx, cy, sel ? 5.5 : 3.5, 0, Math.PI * 2);
+      ctx.fillStyle = sel ? '#00ffcc' : (i === 0 ? '#ff7b00' : 'rgba(0,255,204,0.7)');
+    }
+    ctx.fill();
+    ctx.strokeStyle = sel ? '#ffffff' : (p.sharp ? 'rgba(255,200,0,0.5)' : 'rgba(0,255,204,0.3)');
+    ctx.lineWidth   = sel ? 1.5 : 1;
+    ctx.stroke();
+
+    // Label only for selected or important points
+    if (sel || i === 0 || p.sharp || p.label.includes('apex') || p.label.includes('START')) {
+      ctx.fillStyle  = sel ? '#ffffff' : (p.sharp ? '#ffdd00' : '#00ffcc');
+      ctx.font       = `${sel ? 10 : 8}px monospace`;
+      ctx.fillText((p.sharp ? '⬥ ' : '') + p.label, cx + 8, cy - 6);
+    }
+  });
+
+  // Direction arrow at start
+  const s0 = worldToCanvas(pts[0].x, pts[0].z);
+  const s1 = worldToCanvas(pts[1].x, pts[1].z);
+  const ang = Math.atan2(s1.cy - s0.cy, s1.cx - s0.cx);
+  ctx.save();
+  ctx.translate(s0.cx, s0.cy);
+  ctx.rotate(ang);
+  ctx.fillStyle = '#ff7b00';
+  ctx.beginPath();
+  ctx.moveTo(12, 0); ctx.lineTo(-4, 5); ctx.lineTo(-4, -5);
+  ctx.closePath(); ctx.fill();
+  ctx.restore();
+}
+
+// ── Sidebar list ────────────────────────────────────────────────────
+function buildList() {
+  const list = document.getElementById('point-list');
+  list.innerHTML = '';
+  pts.forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'point-row' + (i === selectedIdx ? ' selected' : '');
+    const sharpBadge = p.sharp ? `<span style="color:#ffdd00;font-size:9px;margin-left:4px">⬥SHARP</span>` : '';
+    row.innerHTML = `<span class="pt-idx">${i}</span><span class="pt-label">${p.label}${sharpBadge}</span><span class="pt-coords">(${Math.round(p.x)}, ${Math.round(p.z)})</span>`;
+    row.onclick = () => select(i);
+    list.appendChild(row);
+  });
+}
+
+function select(i) {
+  selectedIdx = i;
+  buildList();
+  draw();
+  if (i >= 0) {
+    document.getElementById('inp-x').value = Math.round(pts[i].x);
+    document.getElementById('inp-z').value = Math.round(pts[i].z);
+    document.querySelector(`#point-list .point-row:nth-child(${i+1})`)?.scrollIntoView({ block: 'nearest' });
+  }
+}
+
+document.getElementById('inp-x').addEventListener('input', e => {
+  if (selectedIdx < 0) return;
+  pts[selectedIdx].x = parseFloat(e.target.value) || 0;
+  buildList(); draw();
+});
+document.getElementById('inp-z').addEventListener('input', e => {
+  if (selectedIdx < 0) return;
+  pts[selectedIdx].z = parseFloat(e.target.value) || 0;
+  buildList(); draw();
+});
+
+// ── Mouse interaction ───────────────────────────────────────────────
+canvas.addEventListener('mousedown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  // Find nearest point
+  let nearest = -1, nearDist = 14 ** 2;
+  pts.forEach((p, i) => {
+    const { cx, cy } = worldToCanvas(p.x, p.z);
+    const d = (cx - mx) ** 2 + (cy - my) ** 2;
+    if (d < nearDist) { nearDist = d; nearest = i; }
+  });
+  if (nearest >= 0) { select(nearest); dragging = true; dragStart = { mx, my }; }
+});
+
+canvas.addEventListener('mousemove', e => {
+  if (!dragging || selectedIdx < 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const w = canvasToWorld(mx, my);
+  pts[selectedIdx].x = Math.round(w.x / 5) * 5;
+  pts[selectedIdx].z = Math.round(w.z / 5) * 5;
+  document.getElementById('inp-x').value = pts[selectedIdx].x;
+  document.getElementById('inp-z').value = pts[selectedIdx].z;
+  buildList(); draw();
+});
+
+canvas.addEventListener('mouseup', () => { dragging = false; });
+canvas.addEventListener('mouseleave', () => { dragging = false; });
+
+// ── Delete selected point ────────────────────────────────────────────
+document.getElementById('export-btn').insertAdjacentHTML('beforebegin', `
+  <div style="display:flex;gap:8px;margin-bottom:8px">
+    <button id="del-btn" style="flex:1;padding:8px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.6);color:#ff6666;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">✕ Delete point</button>
+    <button id="add-btn" style="flex:1;padding:8px;background:rgba(0,255,204,0.06);border:1px solid rgba(0,255,204,0.4);color:#00ffcc;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">+ Add after</button>
+  </div>
+`);
+
+document.getElementById('del-btn').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  if (pts.length <= 3) { alert('Need at least 3 points'); return; }
+  pts.splice(selectedIdx, 1);
+  // Re-number labels that start with a digit
+  pts.forEach((p, i) => { if (/^\d/.test(p.label)) p.label = String(i) + p.label.replace(/^\d+/, ''); });
+  selectedIdx = Math.min(selectedIdx, pts.length - 1);
+  buildList(); draw();
+  if (selectedIdx >= 0) select(selectedIdx);
+});
+
+document.getElementById('add-btn').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  const a = pts[selectedIdx];
+  const b = pts[(selectedIdx + 1) % pts.length];
+  const newPt = { x: Math.round((a.x + b.x) / 2 / 5) * 5, z: Math.round((a.z + b.z) / 2 / 5) * 5, label: `${selectedIdx + 1} (new)`, sharp: false };
+  pts.splice(selectedIdx + 1, 0, newPt);
+  pts.forEach((p, i) => { if (/^\d/.test(p.label)) p.label = String(i) + p.label.replace(/^\d+/, ''); });
+  selectedIdx = selectedIdx + 1;
+  buildList(); draw();
+  select(selectedIdx);
+});
+
+// ── Sharp corner toggle ─────────────────────────────────────────────
+document.getElementById('export-btn').insertAdjacentHTML('beforebegin', `
+  <button id="sharp-btn" style="width:100%;margin-bottom:8px;padding:8px;background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.5);color:#ffdd00;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">⬥ Toggle sharp corner</button>
+`);
+document.getElementById('sharp-btn').addEventListener('click', () => {
+  if (selectedIdx < 0) return;
+  pts[selectedIdx].sharp = !pts[selectedIdx].sharp;
+  // Update button text to reflect state
+  const btn = document.getElementById('sharp-btn');
+  btn.textContent = pts[selectedIdx].sharp ? '⬥ Sharp: ON' : '⬥ Sharp: OFF';
+  btn.style.background = pts[selectedIdx].sharp ? 'rgba(255,200,0,0.2)' : 'rgba(255,200,0,0.08)';
+  buildList(); draw();
+});
+
+// ── Export ──────────────────────────────────────────────────────────
+document.getElementById('export-btn').addEventListener('click', () => {
+  const lines = pts.map(p =>
+    `  new THREE.Vector3(${String(Math.round(p.x)).padStart(5)}, 0, ${String(Math.round(p.z)).padStart(5)}),  // ${p.label}`
+  ).join('\n');
+  // SHARP_CORNERS is always exported empty: triplicating points with centripetal
+  // mode sets chord length = 0, causing tangent calculation failures and ribbon crossings.
+  const code = `export const CIRCUIT_POINTS = [\n${lines}\n];\n\nexport const SHARP_CORNERS = new Set([\n  // Leave empty — centripetal spline handles all corners cleanly\n]);`;
+  document.getElementById('output-text').textContent = code;
+  document.getElementById('output-modal').classList.add('show');
+});
+
+// ── Init ────────────────────────────────────────────────────────────
+resize();
+buildList();
+</script>
+</body>
+</html>

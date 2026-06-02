@@ -1,9 +1,0 @@
-{
-  "recommendations": [
-    "stylelint.vscode-stylelint",
-    "bradlc.vscode-tailwindcss",
-    "esbenp.prettier-vscode",
-    "ms-vscode.vscode-css-peek",
-    "zignd.html-css-class-completion"
-  ]
-}

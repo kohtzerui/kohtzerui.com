@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Koh Tze Rui — HPC Engineer</title>
+  <meta name="description" content="Portfolio of Koh Tze Rui — HPC Engineer. Drive through my story on the Singapore Night Race circuit." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/src/styles/main.css" />
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== HUD ===== -->
+    <div id="hud">
+      <div id="hud-timer">
+        <span class="hud-label">LAP TIME</span>
+        <span id="timer-display">00:00.000</span>
+      </div>
+      <div id="hud-sector">
+        <span id="sector-display">SECTOR 1 — THE BEGINNING</span>
+      </div>
+      <div id="hud-minimap">
+        <div class="minimap-label">MARINA BAY</div>
+        <canvas id="minimap-canvas" width="400" height="250"></canvas>
+      </div>
+      <div id="hud-speed">
+        <div id="speed-bar-wrap">
+          <div id="speed-bar"></div>
+        </div>
+        <span id="speed-value">0 km/h</span>
+      </div>
+    </div>
+
+    <!-- ===== STORY SUBTITLE ===== -->
+    <div id="story-subtitle">
+      <p id="subtitle-text"></p>
+    </div>
+
+    <!-- ===== PIT STOP CARD ===== -->
+    <div id="pit-card" class="hidden">
+      <div id="pit-card-inner">
+        <div id="pit-card-header"></div>
+        <div id="pit-card-body"></div>
+        <button id="pit-card-close">[ PRESS ESC TO CONTINUE RACING ]</button>
+      </div>
+    </div>
+
+    <!-- ===== CONTACT SCREEN ===== -->
+    <div id="contact-screen" class="hidden">
+      <div id="contact-inner">
+        <div class="flag-header">🏁 RACE COMPLETE</div>
+        <h2>Let's build something together.</h2>
+        <div id="contact-links">
+          <a href="mailto:kohtzerui@gmail.com" id="contact-email" class="contact-btn">
+            <span class="c-icon">✉</span>
+            <span>kohtzerui@gmail.com</span>
+          </a>
+          <a href="https://github.com/kohtzerui" target="_blank" id="contact-github" class="contact-btn">
+            <span class="c-icon">⌥</span>
+            <span>github.com/kohtzerui</span>
+          </a>
+          <a href="https://linkedin.com/in/kohtzerui" target="_blank" id="contact-linkedin" class="contact-btn">
+            <span class="c-icon">⬡</span>
+            <span>linkedin.com/in/kohtzerui</span>
+          </a>
+        </div>
+        <button id="contact-close">[ DRIVE AGAIN ]</button>
+      </div>
+    </div>
+
+    <!-- ===== START SCREEN ===== -->
+    <div id="start-screen">
+      <div id="start-content">
+        <div class="start-eyebrow">SINGAPORE NIGHT RACE CIRCUIT · PORTFOLIO EDITION</div>
+        <h1 id="start-title">KOH TZE RUI</h1>
+        <div class="start-role">HPC Engineer · Systems Builder · F1 Enthusiast</div>
+        <div class="start-instructions">
+          <span class="kbd">W A S D</span> to drive &nbsp;·&nbsp;
+          <span class="kbd">SPACE</span> hard brake &nbsp;·&nbsp;
+          <span class="kbd">ESC</span> to dismiss cards
+        </div>
+        <button id="start-btn">START ENGINE ▶</button>
+      </div>
+      <div id="race-lights">
+        <div class="r-light" id="rl-1"></div>
+        <div class="r-light" id="rl-2"></div>
+        <div class="r-light" id="rl-3"></div>
+        <div class="r-light" id="rl-4"></div>
+        <div class="r-light" id="rl-5"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error overlay — hidden until an error fires -->
+  <div id="error-overlay" style="display:none;position:fixed;inset:0;background:#0a0008;z-index:9999;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;color:#ff4466;padding:40px;">
+    <div style="font-size:12px;letter-spacing:3px;color:#ff4466;margin-bottom:20px;">// RUNTIME ERROR</div>
+    <pre id="error-msg" style="font-size:13px;color:#ffaaaa;max-width:800px;white-space:pre-wrap;line-height:1.8;"></pre>
+    <div style="margin-top:24px;font-size:11px;color:#666;">Open browser DevTools (F12) → Console for full stack trace</div>
+  </div>
+
+  <script>
+    // Catch any uncaught error and show it on screen
+    window.addEventListener('error', function(e) {
+      var overlay = document.getElementById('error-overlay');
+      var msg = document.getElementById('error-msg');
+      if (overlay && msg) {
+        overlay.style.display = 'flex';
+        msg.textContent = (e.message || String(e)) + '\n\nFile: ' + e.filename + '\nLine: ' + e.lineno;
+      }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var overlay = document.getElementById('error-overlay');
+      var msg = document.getElementById('error-msg');
+      if (overlay && msg) {
+        overlay.style.display = 'flex';
+        msg.textContent = 'Unhandled promise rejection:\n' + (e.reason && (e.reason.message || e.reason));
+      }
+    });
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
