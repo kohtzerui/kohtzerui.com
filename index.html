@@ -34,17 +34,16 @@
       </div>
     </div>
 
-    <!-- ===== STORY SUBTITLE ===== -->
-    <div id="story-subtitle">
-      <p id="subtitle-text"></p>
-    </div>
 
-    <!-- ===== PIT STOP CARD ===== -->
-    <div id="pit-card" class="hidden">
-      <div id="pit-card-inner">
-        <div id="pit-card-header"></div>
-        <div id="pit-card-body"></div>
-        <button id="pit-card-close">[ PRESS ESC TO CONTINUE RACING ]</button>
+
+    <!-- ===== EXPLORE PANEL ===== -->
+    <div id="explore-panel" class="hidden">
+      <div id="explore-panel-inner">
+        <div id="explore-panel-tag">// HPC DOMAIN</div>
+        <div id="explore-panel-title"></div>
+        <div id="explore-panel-body"></div>
+        <div id="explore-panel-tags"></div>
+        <div id="explore-panel-hint">[ E ] to close</div>
       </div>
     </div>
 
@@ -79,10 +78,12 @@
         <div class="start-role">HPC Engineer · Systems Builder · F1 Enthusiast</div>
         <div class="start-instructions">
           <span class="kbd">W A S D</span> to drive &nbsp;·&nbsp;
-          <span class="kbd">SPACE</span> hard brake &nbsp;·&nbsp;
-          <span class="kbd">ESC</span> to dismiss cards
+          <span class="kbd">SPACE</span> hard brake
         </div>
-        <button id="start-btn">START ENGINE ▶</button>
+        <div class="start-mode-btns">
+          <button id="start-race-btn" class="mode-btn mode-race">🏁 RACE</button>
+          <button id="start-explore-btn" class="mode-btn mode-explore">🔭 EXPLORE</button>
+        </div>
       </div>
       <div id="race-lights">
         <div class="r-light" id="rl-1"></div>

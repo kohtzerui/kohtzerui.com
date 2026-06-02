@@ -130,6 +130,13 @@
     </div>
     <button id="export-btn">⬇ Export circuit.js code</button>
   </div>
+
+  <!-- HPC object coordinate readout -->
+  <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:4px;font-family:monospace;font-size:10px">
+    <div style="color:rgba(255,255,255,0.4);letter-spacing:2px;margin-bottom:10px">// HPC OBJECT PINS</div>
+    <div style="color:rgba(255,255,255,0.5);font-size:9px;margin-bottom:8px">Drag the coloured squares on the canvas.<br>Paste these coords into objects.js.</div>
+    <div id="obj-readout"></div>
+  </div>
 </div>
 
 <div id="canvas-wrap">
@@ -194,15 +201,29 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
+// ── HPC object pins (draggable, shown alongside the circuit) ────────
+const hpcObjs = [
+  { id: 'systems', label: 'Systems (PC+Tux)', x: -445, z: -445, color: '#ff7b00' },
+  { id: 'fpga',    label: 'Hardware (FPGA)',  x: -395, z:  390, color: '#ffdd00' },
+  { id: 'gpu',     label: 'GPU Cluster',      x:  190, z:   -4, color: '#ff4488' },
+];
+
+
+let draggingObj = null;   // index into hpcObjs while actively dragging
+let selectedObj = null;   // index into hpcObjs — persists after mouseup
+
 // ── World → canvas transform ────────────────────────────────────────
 function getTransform() {
   const PAD = 50;
   const W   = canvas.width - PAD * 2;
   const H   = canvas.height - PAD * 2;
-  const minX = Math.min(...pts.map(p => p.x)) - 40;
-  const maxX = Math.max(...pts.map(p => p.x)) + 40;
-  const minZ = Math.min(...pts.map(p => p.z)) - 40;
-  const maxZ = Math.max(...pts.map(p => p.z)) + 40;
+  // Include HPC object positions in bounding box so they're visible
+  const allX = [...pts.map(p => p.x), ...hpcObjs.map(o => o.x)];
+  const allZ = [...pts.map(p => p.z), ...hpcObjs.map(o => o.z)];
+  const minX = Math.min(...allX) - 80;
+  const maxX = Math.max(...allX) + 80;
+  const minZ = Math.min(...allZ) - 80;
+  const maxZ = Math.max(...allZ) + 80;
   const scaleX = W / (maxX - minX);
   const scaleZ = H / (maxZ - minZ);
   const scale  = Math.min(scaleX, scaleZ);
@@ -323,6 +344,50 @@ function draw() {
     }
   });
 
+  // ── HPC object pins ────────────────────────────────────────────
+  hpcObjs.forEach((obj, i) => {
+    const { cx, cy } = worldToCanvas(obj.x, obj.z);
+    const active = (selectedObj === i);   // clicked/dragging
+    const r = active ? 8 : 5;
+
+    if (active) {
+      // Outer glow ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 9, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color + '44';
+      ctx.fill();
+
+      // Mid glow ring
+      ctx.beginPath();
+      ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
+      ctx.fillStyle = obj.color + '66';
+      ctx.fill();
+
+      // Crosshair lines
+      ctx.strokeStyle = obj.color + 'aa';
+      ctx.lineWidth   = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath(); ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20); ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // Circle
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle   = obj.color;
+    ctx.strokeStyle = active ? '#ffffff' : 'rgba(255,255,255,0.5)';
+    ctx.lineWidth   = active ? 2 : 1;
+    ctx.fill();
+    ctx.stroke();
+
+    // Label
+    ctx.fillStyle = active ? '#ffffff' : obj.color;
+    ctx.font      = active ? 'bold 9px monospace' : '8px monospace';
+    ctx.fillText(obj.label + ' (' + Math.round(obj.x) + ', ' + Math.round(obj.z) + ')', cx + r + 5, cy + 3);
+  });
+
+
   // Direction arrow at start
   const s0 = worldToCanvas(pts[0].x, pts[0].z);
   const s1 = worldToCanvas(pts[1].x, pts[1].z);
@@ -373,11 +438,21 @@ document.getElementById('inp-z').addEventListener('input', e => {
   buildList(); draw();
 });
 
-// ── Mouse interaction ───────────────────────────────────────────────
+// ── Mouse interaction ───────────────────────────────────────────────────
 canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  // Find nearest point
+
+  // Check HPC pins — fixed 20px screen-space hit radius
+  let nearHpc = -1, nearHpcDist = 20 ** 2;
+  hpcObjs.forEach((obj, i) => {
+    const { cx, cy } = worldToCanvas(obj.x, obj.z);
+    const d = (cx - mx) ** 2 + (cy - my) ** 2;
+    if (d < nearHpcDist) { nearHpcDist = d; nearHpc = i; }
+  });
+  if (nearHpc >= 0) { draggingObj = nearHpc; selectedObj = nearHpc; draw(); return; }
+
+  // Find nearest circuit point
   let nearest = -1, nearDist = 14 ** 2;
   pts.forEach((p, i) => {
     const { cx, cy } = worldToCanvas(p.x, p.z);
@@ -388,10 +463,19 @@ canvas.addEventListener('mousedown', e => {
 });
 
 canvas.addEventListener('mousemove', e => {
-  if (!dragging || selectedIdx < 0) return;
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left, my = e.clientY - rect.top;
   const w = canvasToWorld(mx, my);
+
+  if (draggingObj !== null) {
+    // Update data only — no redraw during drag (fires on mouseup)
+    hpcObjs[draggingObj].x = Math.round(w.x / 5) * 5;
+    hpcObjs[draggingObj].z = Math.round(w.z / 5) * 5;
+    updateObjReadout();
+    return;
+  }
+
+  if (!dragging || selectedIdx < 0) return;
   pts[selectedIdx].x = Math.round(w.x / 5) * 5;
   pts[selectedIdx].z = Math.round(w.z / 5) * 5;
   document.getElementById('inp-x').value = pts[selectedIdx].x;
@@ -399,8 +483,11 @@ canvas.addEventListener('mousemove', e => {
   buildList(); draw();
 });
 
-canvas.addEventListener('mouseup', () => { dragging = false; });
-canvas.addEventListener('mouseleave', () => { dragging = false; });
+canvas.addEventListener('mouseup',    () => { dragging = false; draggingObj = null; draw(); });
+canvas.addEventListener('mouseleave', () => { dragging = false; draggingObj = null; draw(); });
+
+
+
 
 // ── Delete selected point ────────────────────────────────────────────
 document.getElementById('export-btn').insertAdjacentHTML('beforebegin', `
@@ -462,6 +549,8 @@ document.getElementById('export-btn').addEventListener('click', () => {
 // ── Init ────────────────────────────────────────────────────────────
 resize();
 buildList();
+updateObjReadout();
+
 </script>
 </body>
 </html>

@@ -4,6 +4,7 @@ import { createTrack }       from './three/track.js';
 import { createCar }         from './three/car.js';
 import { createEnvironment } from './three/environment.js';
 import { Minimap }           from './three/minimap.js';
+import { createExploreObjects, updateExploreObjects } from './three/objects.js';
 import { StorySystem }       from './game/story.js';
 import { HUD }               from './game/hud.js';
 import { TRACK_WIDTH }       from './game/circuit.js';
@@ -14,10 +15,11 @@ import { TRACK_WIDTH }       from './game/circuit.js';
 const { scene, camera, renderer, composer } = createScene();
 const { curve } = createTrack(scene);
 createEnvironment(scene);
-const car     = createCar(scene);
-const minimap = new Minimap('minimap-canvas');
-const story   = new StorySystem(curve);
-const hud     = new HUD();
+const car          = createCar(scene);
+const minimap      = new Minimap('minimap-canvas');
+const story        = new StorySystem(curve);
+const hud          = new HUD();
+const exploreObjs  = createExploreObjects(scene);
 
 // ─────────────────────────────────────────────────────────────────
 // Car spawn
@@ -39,12 +41,12 @@ const carState = {
 };
 
 const PHY = {
-  accel:       14,   // units/s²
-  brake:       16,   // gentle brake (S / ↓)
-  hardBrake:   22,   // firm brake (Space) — gradual, not a wall
+  accel:       33,   // units/s² (1.5× previous)
+  brake:       27,   // gentle brake (S / ↓)
+  hardBrake:   42,   // firm brake (Space)
   friction:    8,    // passive drag
-  maxSpeed:    55,   // units/s
-  turnRate:   1.8,   // rad/s — more aggressive cornering
+  maxSpeed:    64,   // units/s ≈ 230 km/h
+  turnRate:   1.8,   // rad/s
   turnFric:    5,
 };
 
@@ -81,15 +83,28 @@ function clampToTrack() {
 
   _sideVec.crossVectors(_bTans[bestI], _UP).normalize();
   _offVec.subVectors(car.position, _bPts[bestI]);
-  const dist = _offVec.dot(_sideVec);
+  const dist    = _offVec.dot(_sideVec);
+  const absDist = Math.abs(dist);
+  const KERB_W   = 4;
+  const GRAVEL_W = 4;                        // same width as kerb
+  const kerbEdge   = _halfTrack + KERB_W;    // 15 — outer edge of kerb
+  const gravelEdge = _halfTrack + GRAVEL_W * 2; // 19 — outer edge of gravel = hard wall
 
-  if (Math.abs(dist) > _halfTrack) {
-    const excess = Math.abs(dist) - _halfTrack;
+
+  if (absDist > gravelEdge) {
+    // Hard wall
+    const excess = absDist - gravelEdge;
     car.position.addScaledVector(_sideVec, -Math.sign(dist) * excess);
-    // Speed penalty proportional to hit angle
     carState.speed *= 0.3;
+  } else if (absDist > kerbEdge) {
+    // Gravel — significant drag
+    carState.speed *= 0.97;
+  } else if (absDist > _halfTrack) {
+    // Kerb — very slight drag
+    carState.speed *= 0.997;
   }
 }
+
 
 // ─────────────────────────────────────────────────────────────────
 // Input
@@ -128,25 +143,67 @@ window.addEventListener('lap-restart', () => {
   carState.speed = 0;
   carState.lean  = 0;
   turnInput = 0;
-  hud.start();
+  if (gameMode === 'race') hud.start();
+});
+
+// ─────────────────────────────────────────────────────────────────
+// Explore panel — E key toggles info for nearest HPC object
+// ─────────────────────────────────────────────────────────────────
+const explorePanel      = document.getElementById('explore-panel');
+const explorePanelTitle = document.getElementById('explore-panel-title');
+const explorePanelBody  = document.getElementById('explore-panel-body');
+const explorePanelTags  = document.getElementById('explore-panel-tags');
+const explorePanelTag   = document.getElementById('explore-panel-tag');
+let   explorePanelOpen  = false;
+let   currentNearObj    = null;
+
+document.addEventListener('keydown', e => {
+  if (e.code !== 'KeyE' || gameMode !== 'explore') return;
+  if (explorePanelOpen) {
+    explorePanel.classList.add('hidden');
+    explorePanelOpen = false;
+  } else if (currentNearObj) {
+    explorePanelTag.textContent   = currentNearObj.label;
+    explorePanelTitle.textContent = currentNearObj.title;
+    explorePanelBody.textContent  = currentNearObj.body;
+    explorePanelTags.innerHTML = currentNearObj.tags
+      .map(t => `<span class="tag">${t}</span>`).join('');
+    explorePanel.classList.remove('hidden');
+    explorePanelOpen = true;
+  }
 });
 
 // ─────────────────────────────────────────────────────────────────
 // Start screen
 // ─────────────────────────────────────────────────────────────────
 let gameStarted = false;
+let gameMode    = 'race'; // 'race' | 'explore'
 
-const startScreen = document.getElementById('start-screen');
-const startBtn    = document.getElementById('start-btn');
-const rLights     = Array.from(document.querySelectorAll('.r-light'));
+const startScreen    = document.getElementById('start-screen');
+const startRaceBtn   = document.getElementById('start-race-btn');
+const startExploreBtn= document.getElementById('start-explore-btn');
+const rLights        = Array.from(document.querySelectorAll('.r-light'));
 
 // Orbit centre ≈ centroid of the 37 waypoints
 const orbitCenter = new THREE.Vector3(-50, 0, -50);
 
-startBtn.addEventListener('click', () => {
-  startBtn.disabled = true;
-  startBtn.textContent = 'LIGHTS ON…';
+function launchGame(mode) {
+  gameMode = mode;
+  startRaceBtn.disabled = startExploreBtn.disabled = true;
 
+  if (mode === 'explore') {
+    // Explore: skip race lights, go straight in — same top speed as race
+    startScreen.style.opacity = '0';
+    setTimeout(() => {
+      startScreen.style.display = 'none';
+      gameStarted = true;
+      if (mode === 'race') hud.start();
+    }, 600);
+    return;
+  }
+
+  // Race: full F1 light sequence
+  startRaceBtn.textContent = 'LIGHTS ON…';
   let lit = 0;
   const litInterval = setInterval(() => {
     if (lit < rLights.length) {
@@ -161,13 +218,15 @@ startBtn.addEventListener('click', () => {
             startScreen.style.display = 'none';
             gameStarted = true;
             hud.start();
-            story.showSubtitle("My name is Koh Tze Rui.");
           }, 900);
         }, 350);
       }, 750);
     }
   }, 420);
-});
+}
+
+startRaceBtn.addEventListener('click',    () => launchGame('race'));
+startExploreBtn.addEventListener('click', () => launchGame('explore'));
 
 // ─────────────────────────────────────────────────────────────────
 // Game loop
@@ -232,8 +291,8 @@ function animate() {
     car.position.addScaledVector(carState.forward, carState.speed * delta);
     car.position.y = 0;
 
-    // ── Barrier collision ─────────────────────────────────────────
-    clampToTrack();
+    // ── Barrier collision (race mode only) ───────────────────────
+    if (gameMode === 'race') clampToTrack();
 
     // ── Orient car ───────────────────────────────────────────────
     car.quaternion.setFromUnitVectors(_FWD_REF, carState.forward);
@@ -243,7 +302,20 @@ function animate() {
     updateCamera(delta);
     hud.update(carState.speed, PHY.maxSpeed);
     minimap.draw(car.position);
-    story.update(car.position);
+
+    if (gameMode === 'race') {
+      story.update(car.position);
+    } else {
+      // Explore mode: update object glow + track nearest
+      currentNearObj = updateExploreObjects(exploreObjs, car.position);
+      // Show a hint when close to an object but panel not open
+      if (currentNearObj && !explorePanelOpen) {
+        explorePanelTag.textContent = currentNearObj.label + ' — [ E ] to inspect';
+        explorePanel.classList.remove('hidden');
+      } else if (!currentNearObj && !explorePanelOpen) {
+        explorePanel.classList.add('hidden');
+      }
+    }
   }
 
   composer.render();

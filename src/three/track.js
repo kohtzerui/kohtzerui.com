@@ -27,15 +27,16 @@ export function createTrack(scene) {
     const tan  = curve.getTangent(t).normalize();
     const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
 
-    const L = pt.clone().addScaledVector(side, -TRACK_WIDTH / 2);
-    const R = pt.clone().addScaledVector(side,  TRACK_WIDTH / 2);
+    const L = pt.clone().addScaledVector(side, -TRACK_WIDTH / 2).setY(0.05);
+    const R = pt.clone().addScaledVector(side,  TRACK_WIDTH / 2).setY(0.05);
 
     positions.push(L.x, L.y, L.z,  R.x, R.y, R.z);
     normals.push(0, 1, 0,  0, 1, 0);
     uvs.push(0, t * 10,  1, t * 10);
 
-    leftEdgePts.push(L.clone().setY(0.06));
-    rightEdgePts.push(R.clone().setY(0.06));
+    leftEdgePts.push(L.clone().setY(0.08));
+    rightEdgePts.push(R.clone().setY(0.08));
+
 
     if (i < N) {
       const a = i * 2, b = i * 2 + 1, c = (i + 1) * 2, d = (i + 1) * 2 + 1;
@@ -105,7 +106,8 @@ export function createTrack(scene) {
   const dashMat = new THREE.LineDashedMaterial({
     color: 0x334455, dashSize: 2, gapSize: 2, transparent: true, opacity: 0.35,
   });
-  const dashPts = curve.getPoints(N).map(p => p.clone().setY(0.02));
+  const dashPts = curve.getPoints(N).map(p => p.clone().setY(0.07));
+
   const dashLine = new THREE.Line(new THREE.BufferGeometry().setFromPoints(dashPts), dashMat);
   dashLine.computeLineDistances();
   scene.add(dashLine);
@@ -131,7 +133,7 @@ export function createTrack(scene) {
     const geo = new THREE.PlaneGeometry(TRACK_WIDTH, 4);
     geo.rotateX(-Math.PI / 2);
     const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: tex }));
-    mesh.position.set(pos.x, 0.025, pos.z);
+    mesh.position.set(pos.x, 0.1, pos.z);
     mesh.rotation.y = Math.atan2(tan.x, tan.z);
     scene.add(mesh);
 
@@ -222,5 +224,179 @@ export function createTrack(scene) {
     scene.add(bulb);
   }
 
+  addGravel(scene, curve);
+  addKerbs(scene, curve);
+
+
   return { curve };
+}
+
+// ── Gravel/runoff — dark grey ribbon, straights only ──────────
+function addGravel(scene, curve) {
+  const cv  = document.createElement('canvas');
+  cv.width  = 128; cv.height = 128;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#4a4a4a';          // darker grey
+  ctx.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 500; i++) {
+    const x = Math.random() * 128, y = Math.random() * 128;
+    const r = Math.random() * 2 + 0.5;
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(30,30,30,${0.3 + Math.random() * 0.5})`;
+    ctx.fill();
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(3, 3);
+  const mat = new THREE.MeshStandardMaterial({ map: tex, roughness: 1, metalness: 0 });
+
+  const GRAVEL_W = 4;
+  const GRAVEL_Y = 0.06;
+  const SAMPLES  = 400;
+  const SKIP      = 3;
+  const THRESHOLD = 0.04;   // kerbs start at 0.03. Gravel overlaps up to 0.04, then stops at sharp hairpins to avoid folding.
+
+
+
+
+  const pts  = [];
+  const tans = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    pts.push(curve.getPoint(t));
+    tans.push(curve.getTangent(t).normalize());
+  }
+
+  // Collect low-curvature segments
+  const straightSegs = [];
+  let inStr = false, sStart = 0;
+  for (let i = SKIP; i < pts.length; i++) {
+    const t1 = tans[i - SKIP], t2 = tans[i];
+    const curv = Math.abs(t1.x * t2.z - t1.z * t2.x);
+    if (curv <= THRESHOLD) {
+      if (!inStr) { inStr = true; sStart = Math.max(0, i - SKIP); } // extend back slightly to connect
+    } else {
+      if (inStr) {
+        if (i - sStart > 2) straightSegs.push({ start: sStart, end: i }); // extend forward slightly
+        inStr = false;
+      }
+    }
+  }
+  if (inStr && pts.length - 1 - sStart > 2)
+    straightSegs.push({ start: sStart, end: pts.length - 1 });
+
+
+  // Build a separate mesh per straight segment, per side
+  straightSegs.forEach(seg => {
+    [-1, 1].forEach(sign => {
+      const pos = [], uvArr = [], idx = [];
+      let uvU = 0;
+      for (let i = seg.start; i <= seg.end; i++) {
+        const sideVec = new THREE.Vector3().crossVectors(tans[i], UP).normalize();
+        const inner = pts[i].clone().addScaledVector(sideVec,  sign * TRACK_WIDTH / 2);
+        const outer = pts[i].clone().addScaledVector(sideVec,  sign * (TRACK_WIDTH / 2 + GRAVEL_W));
+        pos.push(inner.x, GRAVEL_Y, inner.z,  outer.x, GRAVEL_Y, outer.z);
+        uvArr.push(uvU, 0,  uvU, 1);
+        uvU += 0.4;
+        if (i > seg.start) {
+          const b = (i - seg.start) * 2, a = b - 2;
+          idx.push(a, a+1, b,  a+1, b+1, b);
+        }
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,   3));
+      geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uvArr, 2));
+      geo.setIndex(idx);
+      geo.computeVertexNormals();
+      scene.add(new THREE.Mesh(geo, mat));
+    });
+  });
+}
+
+// ── Kerbs — red/white rumble strips at corner apices ──────────
+function addKerbs(scene, curve) {
+  // Red/white striped texture
+  const cv = document.createElement('canvas');
+  cv.width = 256; cv.height = 32;
+  const ctx = cv.getContext('2d');
+  for (let i = 0; i < 8; i++) {
+    ctx.fillStyle = i % 2 === 0 ? '#cc1100' : '#ffffff';
+    ctx.fillRect(i * 32, 0, 32, 32);
+  }
+  const tex = new THREE.CanvasTexture(cv);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  const kerbMat = new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide });
+
+  const KERB_W = 4;     // world units wide
+  const KERB_Y = 0.12;  // above track ribbon
+
+  // Sample at low density — 400 pts is plenty to detect corners
+  const SAMPLES = 400;
+  const pts  = [];
+  const tans = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t = i / SAMPLES;
+    pts.push(curve.getPoint(t));
+    tans.push(curve.getTangent(t).normalize());
+  }
+
+  // Compare tangents SKIP steps apart to amplify curvature signal
+  const SKIP      = 3;
+  const THRESHOLD = 0.03;
+  const segments  = [];
+  let inCorner = false, cSide = 1, cStart = 0;
+
+  for (let i = SKIP; i < pts.length; i++) {
+    const t1 = tans[i - SKIP], t2 = tans[i];
+    const cross = t1.x * t2.z - t1.z * t2.x;
+    const curv  = Math.abs(cross);
+    const side  = cross > 0 ? -1 : 1;
+
+    if (curv > THRESHOLD) {
+      if (!inCorner || side !== cSide) {
+        if (inCorner && i - cStart > 2)
+          segments.push({ start: cStart, end: i - 1, side: cSide });
+        inCorner = true; cSide = side; cStart = i;
+      }
+    } else {
+      if (inCorner && i - cStart > 2)
+        segments.push({ start: cStart, end: i - 1, side: cSide });
+      inCorner = false;
+    }
+  }
+
+  console.log(`[kerbs] detected ${segments.length} corner segments`);
+
+  segments.forEach(seg => {
+    const pos = [], uvArr = [], idx = [];
+    let uvV = 0;
+
+    for (let i = seg.start; i <= seg.end; i++) {
+      const pt   = pts[i];
+      const tan  = tans[i];
+      const sideVec = new THREE.Vector3().crossVectors(tan, UP).normalize();
+
+      const inner = pt.clone().addScaledVector(sideVec,  seg.side * TRACK_WIDTH / 2);
+      const outer = pt.clone().addScaledVector(sideVec,  seg.side * (TRACK_WIDTH / 2 + KERB_W));
+
+      pos.push(inner.x, KERB_Y, inner.z,  outer.x, KERB_Y, outer.z);
+      // U steps along track (drives stripe frequency), V spans kerb width
+      uvArr.push(uvV, 0,  uvV, 1);
+      uvV += 0.35;
+
+
+      if (i > seg.start) {
+        const b = (i - seg.start) * 2;
+        const a = b - 2;
+        idx.push(a, a + 1, b,  a + 1, b + 1, b);
+      }
+    }
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute(pos,   3));
+    geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uvArr, 2));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    scene.add(new THREE.Mesh(geo, kerbMat));
+  });
 }

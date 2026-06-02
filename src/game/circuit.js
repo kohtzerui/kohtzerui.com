@@ -21,26 +21,26 @@ import * as THREE from 'three';
 export const CIRCUIT_POINTS = [
   new THREE.Vector3(  615, 0,    10),  //  0 START/FINISH
   new THREE.Vector3(  590, 0,  -460),  //  1 T2 apex
-  new THREE.Vector3(  515, 0,  -485),  //  2 T3 apex
+  new THREE.Vector3(  505, 0,  -495),  //  2 T3 apex
   new THREE.Vector3(  445, 0,  -525),  //  3 T3 mid-exit
   new THREE.Vector3(  420, 0,  -430),  //  4
   new THREE.Vector3(  450, 0,  -145),  //  5
   new THREE.Vector3( -100, 0,  -235),  //  6 T6 exit
   new THREE.Vector3( -410, 0,  -375),  //  7 T7 exit
-  new THREE.Vector3( -485, 0,  -215),  //  8 T8 apex
+  new THREE.Vector3( -505, 0,  -210),  //  8 T8 apex
   new THREE.Vector3( -550, 0,  -240),  //  9
   new THREE.Vector3( -645, 0,  -385),  // 10 T9 mid
-  new THREE.Vector3( -700, 0,  -405),  // 11 T9 apex
+  new THREE.Vector3( -700, 0,  -410),  // 11 T9 apex
   new THREE.Vector3( -775, 0,  -265),  // 12
   new THREE.Vector3( -850, 0,   -75),  // 13 T10 apex
   new THREE.Vector3( -750, 0,     5),  // 14 T10 exit
   new THREE.Vector3( -735, 0,    70),  // 15 T11
   new THREE.Vector3( -615, 0,   175),  // 16 T12
-  new THREE.Vector3( -570, 0,   190),  // 17
-  new THREE.Vector3( -545, 0,   145),  // 18
+  new THREE.Vector3( -565, 0,   200),  // 17
+  new THREE.Vector3( -545, 0,   165),  // 18
   new THREE.Vector3( -545, 0,    15),  // 19
-  new THREE.Vector3( -480, 0,  -135),  // 20 T14 approach
-  new THREE.Vector3( -335, 0,   -10),  // 21 T14 exit
+  new THREE.Vector3( -490, 0,  -135),  // 20 T14 approach
+  new THREE.Vector3( -345, 0,    10),  // 21 T14 exit
   new THREE.Vector3(   90, 0,    20),  // 22
   new THREE.Vector3(  150, 0,   125),  // 23
   new THREE.Vector3(  535, 0,   115),  // 24 T18

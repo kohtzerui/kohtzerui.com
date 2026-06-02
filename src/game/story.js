@@ -1,107 +1,110 @@
-import { STORY_ZONES, PIT_STOPS, FINISH_T, FINISH_RADIUS } from './circuit.js';
+import { STORY_ZONES, FINISH_T, FINISH_RADIUS } from './circuit.js';
 
 /**
- * StorySystem — manages subtitle display, pit stop cards, and the
- * finish / contact screen.  All story triggers are proximity-based
- * (3D world-space distance from the car to each zone's position on
- * the curve), so the narrative flows continuously while driving.
+ * StorySystem — voice-over narration + finish screen.
+ *
+ * Zones trigger Web Speech API (browser TTS) narration as the car passes.
+ * When real .mp3 voice lines are ready, drop them into public/audio/<zoneId>.mp3
+ * and the system will automatically prefer audio files over TTS.
+ *
+ * Pit stop cards have been removed — the narrative flows uninterrupted.
  */
 export class StorySystem {
   constructor(curve) {
     this.curve = curve;
 
     // Pre-compute 3D positions for each zone
-    this.zonePositions   = STORY_ZONES.map(z => curve.getPoint(z.t));
-    this.pitPositions    = PIT_STOPS.map(p => curve.getPoint(p.t));
-    this.finishPosition  = curve.getPoint(FINISH_T);
+    this.zonePositions  = STORY_ZONES.map(z => curve.getPoint(z.t));
+    this.finishPosition = curve.getPoint(FINISH_T);
 
     // DOM refs
-    this.subtitleWrap  = document.getElementById('story-subtitle');
-    this.subtitleText  = document.getElementById('subtitle-text');
-    this.pitCard       = document.getElementById('pit-card');
-    this.pitCardHeader = document.getElementById('pit-card-header');
-    this.pitCardBody   = document.getElementById('pit-card-body');
-    this.pitCardClose  = document.getElementById('pit-card-close');
     this.contactScreen = document.getElementById('contact-screen');
     this.contactClose  = document.getElementById('contact-close');
     this.sectorDisplay = document.getElementById('sector-display');
 
     this.triggered   = new Set();
-    this.cardOpen    = false;
     this.contactOpen = false;
-    this._subtitleTimer = null;
+
+    // Active audio (so we can stop previous clip on new zone)
+    this._activeAudio  = null;
+    this._activeSpeech = null;
 
     // Event bindings
-    this.pitCardClose.addEventListener('click', () => this.closePitCard());
     this.contactClose.addEventListener('click', () => this.closeContact());
     document.addEventListener('keydown', e => {
-      if (e.key === 'Escape') {
-        if (this.cardOpen)    this.closePitCard();
-        if (this.contactOpen) this.closeContact();
-      }
+      if (e.key === 'Escape' && this.contactOpen) this.closeContact();
     });
   }
 
   /** Call every frame with current car world position (THREE.Vector3). */
   update(carPos) {
-    if (this.cardOpen || this.contactOpen) return;
+    if (this.contactOpen) return;
 
-    // — Story subtitle zones —
+    // — Story narration zones —
     STORY_ZONES.forEach((zone, i) => {
       if (this.triggered.has(zone.id)) return;
       const dist = carPos.distanceTo(this.zonePositions[i]);
       if (dist < 18) {
         this.triggered.add(zone.id);
-        this.showSubtitle(zone.text);
         this.sectorDisplay.textContent = zone.sector;
+        this._speak(zone.id, zone.text);
       }
     });
 
-    // — Pit stop zones —
-    PIT_STOPS.forEach((pit, i) => {
-      if (this.triggered.has(pit.id)) return;
-      const dist = carPos.distanceTo(this.pitPositions[i]);
-      if (dist < pit.triggerRadius) {
-        this.triggered.add(pit.id);
-        this.openPitCard(pit);
-      }
-    });
-
-    // — Finish line (only after both pit stops have been visited) —
+    // — Finish line —
     if (!this.triggered.has('finish')) {
-      const pitsDone = PIT_STOPS.every(p => this.triggered.has(p.id));
-      if (pitsDone) {
-        const dist = carPos.distanceTo(this.finishPosition);
-        if (dist < FINISH_RADIUS) {
-          this.triggered.add('finish');
-          this.showContact();
-        }
+      const dist = carPos.distanceTo(this.finishPosition);
+      if (dist < FINISH_RADIUS) {
+        this.triggered.add('finish');
+        this._stopSpeech();
+        this.showContact();
       }
     }
   }
 
-  showSubtitle(text) {
-    if (this._subtitleTimer) clearTimeout(this._subtitleTimer);
-    this.subtitleText.innerHTML = text.replace(/\n/g, '<br>');
-    this.subtitleWrap.classList.add('visible');
-    this._subtitleTimer = setTimeout(() => {
-      this.subtitleWrap.classList.remove('visible');
-    }, 5500);
+  // ── Voice-over: prefer .mp3 file, fall back to Web Speech API ────
+  _speak(id, text) {
+    this._stopSpeech();
+    const audioPath = `/audio/${id}.mp3`;
+
+    // Try loading the .mp3 file first
+    const audio = new Audio(audioPath);
+    audio.addEventListener('canplaythrough', () => {
+      this._activeAudio = audio;
+      audio.play().catch(() => this._tts(text)); // fallback if blocked
+    }, { once: true });
+    audio.addEventListener('error', () => {
+      // File doesn't exist yet — use browser TTS
+      this._tts(text);
+    }, { once: true });
+    audio.load();
   }
 
-  openPitCard(pit) {
-    this.cardOpen = true;
-    this.pitCardHeader.textContent = `${pit.title}  —  ${pit.chapter}`;
-    this.pitCardBody.innerHTML = pit.content + `
-      <div class="tech-tags">
-        ${pit.tags.map(t => `<span class="tag">${t}</span>`).join('')}
-      </div>`;
-    this.pitCard.classList.remove('hidden');
+  _tts(text) {
+    if (!window.speechSynthesis) return;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate  = 0.92;
+    utt.pitch = 1.0;
+    utt.lang  = 'en-GB';
+    // Pick a pleasant voice if available
+    const voices = window.speechSynthesis.getVoices();
+    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
+                   || voices.find(v => v.lang.startsWith('en'))
+                   || null;
+    if (preferred) utt.voice = preferred;
+    this._activeSpeech = utt;
+    window.speechSynthesis.speak(utt);
   }
 
-  closePitCard() {
-    this.cardOpen = false;
-    this.pitCard.classList.add('hidden');
+  _stopSpeech() {
+    if (this._activeAudio) {
+      this._activeAudio.pause();
+      this._activeAudio = null;
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+      this._activeSpeech = null;
+    }
   }
 
   showContact() {
@@ -112,14 +115,12 @@ export class StorySystem {
   closeContact() {
     this.contactOpen = false;
     this.contactScreen.classList.add('hidden');
-    // Reset all triggers for another lap
     this.triggered.clear();
-    // Notify main.js to reset car position
     window.dispatchEvent(new CustomEvent('lap-restart'));
   }
 
-  /** Returns true if a card overlay is blocking gameplay. */
+  /** Returns true if a full-screen overlay is blocking gameplay. */
   isBlocking() {
-    return this.cardOpen || this.contactOpen;
+    return this.contactOpen;
   }
 }

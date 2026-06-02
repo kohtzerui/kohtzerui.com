@@ -10,8 +10,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 export function createScene() {
   // --- Scene ---
   const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0x020210);
-  scene.fog = new THREE.FogExp2(0x020210, 0.0005);
+  scene.background = new THREE.Color(0x87ceeb);   // sky blue
+  scene.fog = new THREE.FogExp2(0x87ceeb, 0.0003);
 
   // --- Camera ---
   const camera = new THREE.PerspectiveCamera(
@@ -36,23 +36,23 @@ export function createScene() {
 
   const bloom = new UnrealBloomPass(
     new THREE.Vector2(window.innerWidth, window.innerHeight),
-    0.85,  // strength (was 1.1 — less aggressive)
+    0.3,   // strength — subtle in daylight
     0.4,   // radius
-    0.15,  // threshold
+    0.6,   // threshold — only very bright emissives bloom
   );
   composer.addPass(bloom);
 
-  // --- Lighting ---
-  // Ambient — bright enough to see track surface
-  scene.add(new THREE.AmbientLight(0x445566, 2.0));
+  // --- Lighting (daytime) ---
+  // Bright ambient — fills all shadows
+  scene.add(new THREE.AmbientLight(0xffffff, 2.5));
 
-  // Hemisphere — subtle sky/ground separation
-  scene.add(new THREE.HemisphereLight(0x223355, 0x0a0a12, 0.6));
+  // Hemisphere — warm sky above, green-grey ground below
+  scene.add(new THREE.HemisphereLight(0x87ceeb, 0x556644, 1.2));
 
-  // Directional "moonlight" — soft fill from above
-  const moon = new THREE.DirectionalLight(0x8899bb, 0.4);
-  moon.position.set(40, 80, -30);
-  scene.add(moon);
+  // Directional sunlight — strong, from upper-left
+  const sun = new THREE.DirectionalLight(0xfffbe8, 2.0);
+  sun.position.set(-80, 200, -60);
+  scene.add(sun);
 
   // --- Resize ---
   window.addEventListener('resize', () => {
