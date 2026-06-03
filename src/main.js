@@ -146,9 +146,21 @@ function updateCamera(delta) {
   camera.lookAt(camTarget);
 }
 
+function updateCameraForGhost(delta) {
+  if (!ghostPlay.mesh || !ghostPlay.mesh.visible) return;
+  const gPos = ghostPlay.mesh.position;
+  const gFwd = ghostPlay.getForward() || new THREE.Vector3(1, 0, 0);
+  const back  = gFwd.clone().negate().multiplyScalar(25);
+  const ideal = gPos.clone().add(back).add(new THREE.Vector3(0, 12, 0));
+  camera.position.lerp(ideal, Math.min(1, 5 * delta));
+  camTarget.lerp(gPos.clone().add(new THREE.Vector3(0, 1.5, 0)), Math.min(1, 8 * delta));
+  camera.lookAt(camTarget);
+}
+
 // ─────────────────────────────────────────────────────────────────
-// Lap restart
+// Game loop
 // ─────────────────────────────────────────────────────────────────
+
 let lapElapsed = 0;
 let lapStartMs = 0;
 let lapNumber  = 0;  // 0 = not started, 1 = intro/story lap, 2+ = visitor racing
@@ -227,6 +239,8 @@ document.addEventListener('keydown', e => {
 // ─────────────────────────────────────────────────────────────────
 let gameStarted = false;
 let gameMode    = 'race'; // 'race' | 'explore'
+let gamePhase   = 'cinematic'; // 'cinematic' | 'ready' | 'racing' | 'explore'
+let ghostFinishHandled = false;
 
 const startScreen    = document.getElementById('start-screen');
 const startRaceBtn   = document.getElementById('start-race-btn');
@@ -245,6 +259,7 @@ function launchGame(mode) {
     setTimeout(() => {
       startScreen.style.display = 'none';
       gameStarted = true;
+      gamePhase   = 'explore';
     }, 600);
     return;
   }
@@ -263,33 +278,76 @@ function launchGame(mode) {
           startScreen.style.opacity = '0';
           setTimeout(() => {
             startScreen.style.display = 'none';
-            gameStarted = true;
-            lapNumber   = 1;   // intro/story lap
-            lapStartMs  = performance.now();
-            hud.start();
-            ghostRec.start();  // record intro lap (only active with ?record=1)
-            // Ghost does NOT play on lap 1 — that's the story lap
+            gameStarted  = true;
+            gamePhase    = 'cinematic';
+            lapStartMs   = performance.now();
+            car.visible  = false;          // hide player car during cinematic
+            story.reset();
+            ghostFinishHandled = false;
+            ghostPlay.setOpacity(1.0);     // fully solid for cinematic
+            ghostPlay.start();             // ghost drives the intro lap
           }, 900);
         }, 350);
       }, 750);
     }
   }, 420);
-
 }
+
 
 
 startRaceBtn.addEventListener('click',    () => launchGame('race'));
 startExploreBtn.addEventListener('click', () => launchGame('explore'));
 
 // ─────────────────────────────────────────────────────────────────
-// Game loop
+// Cinematic → Racing transition
 // ─────────────────────────────────────────────────────────────────
+const readyScreen  = document.getElementById('ready-screen');
+const readyLapTime = document.getElementById('ready-lap-time');
+const readyBtn     = document.getElementById('ready-btn');
+
+function showReadyScreen() {
+  const ms = ghostPlay.getGhostLapMs();
+  if (ms && readyLapTime) {
+    const m   = Math.floor(ms / 60000);
+    const s   = Math.floor((ms % 60000) / 1000);
+    const mil = Math.floor(ms % 1000);
+    readyLapTime.textContent = `GHOST LAP — ${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}.${String(mil).padStart(3,'0')}`;
+  }
+  readyScreen.classList.remove('hidden');
+}
+
+function startRacingLap() {
+  readyScreen.classList.add('hidden');
+  gamePhase    = 'racing';
+  lapNumber    = 1;
+  lapElapsed   = 0;
+  lapStartMs   = performance.now();
+  car.visible  = true;
+  car.position.copy(startPos);
+  carState.forward.copy(startTan);
+  carState.speed = 0;
+  carState.lean  = 0;
+  turnInput      = 0;
+  story.reset();
+  hud.start();
+  ghostRec.start();
+  ghostPlay.setOpacity(0.6);   // semi-transparent while racing
+  ghostPlay.start();            // replay ghost from beginning
+}
+
+if (readyBtn) readyBtn.addEventListener('click', startRacingLap);
+
+// ─────────────────────────────────────────────────────────────────
+// Camera helpers
+// ─────────────────────────────────────────────────────────────────
+
 const clock = new THREE.Clock();
 
 function animate() {
   requestAnimationFrame(animate);
   const delta = Math.min(clock.getDelta(), 0.05);
 
+  // ── Pre-game orbit ───────────────────────────────────────────────
   if (!gameStarted) {
     const t = clock.getElapsedTime() * 0.03;
     camera.position.set(
@@ -302,16 +360,75 @@ function animate() {
     return;
   }
 
+  // ── Cinematic: ghost drives, camera follows ──────────────────────
+  if (gamePhase === 'cinematic') {
+    lapElapsed = (performance.now() - lapStartMs) / 1000;
+    ghostPlay.update(lapElapsed, null);
+    updateCameraForGhost(delta);
+    if (ghostPlay.mesh?.position) story.update(ghostPlay.mesh.position);
+    minimap.draw(ghostPlay.mesh?.position || startPos);
+
+    // Detect ghost lap end → show "Are you ready?"
+    if (!ghostFinishHandled && ghostPlay.isFinished()) {
+      ghostFinishHandled = true;
+      gamePhase = 'ready';
+      showReadyScreen();
+    }
+    composer.render();
+    return;
+  }
+
+  // ── Ready screen — just keep rendering, no input ─────────────────
+  if (gamePhase === 'ready') {
+    composer.render();
+    return;
+  }
+
+  // ── Explore mode ─────────────────────────────────────────────────
+  if (gamePhase === 'explore') {
+    if (!story.isBlocking()) {
+      const w = keys['KeyW'] || keys['ArrowUp'];
+      const s = keys['KeyS'] || keys['ArrowDown'];
+      const a = keys['KeyA'] || keys['ArrowLeft'];
+      const d = keys['KeyD'] || keys['ArrowRight'];
+      const brake = keys['Space'] || keys['KeyB'];
+      if (brake) { const sign = Math.sign(carState.speed); const decay = PHY.hardBrake * delta; carState.speed = Math.abs(carState.speed) > decay ? carState.speed - sign * decay : 0; }
+      else if (w) carState.speed = Math.min(carState.speed + PHY.accel * delta, PHY.maxSpeed);
+      else if (s) carState.speed = Math.max(carState.speed - PHY.brake * delta, -PHY.maxSpeed * 0.25);
+      else { const sign = Math.sign(carState.speed); const decay = PHY.friction * delta; carState.speed = Math.abs(carState.speed) > decay ? carState.speed - sign * decay : 0; }
+      const speedFactor = Math.min(Math.abs(carState.speed) / PHY.maxSpeed, 1);
+      const targetTurn  = a ? 1 : d ? -1 : 0;
+      turnInput += (targetTurn - turnInput) * Math.min(1, PHY.turnFric * delta);
+      if (Math.abs(carState.speed) > 0.6) carState.forward.applyAxisAngle(_UP, turnInput * PHY.turnRate * speedFactor * delta).normalize();
+      car.position.addScaledVector(carState.forward, carState.speed * delta);
+      car.position.y = 0;
+      car.quaternion.setFromUnitVectors(_FWD_REF, carState.forward);
+      carState.lean += (-turnInput * 0.05 * speedFactor - carState.lean) * Math.min(1, 8 * delta);
+      car.rotateZ(carState.lean);
+      updateCamera(delta);
+      hud.update(carState.speed, PHY.maxSpeed);
+      minimap.draw(car.position);
+      currentNearObj = updateExploreObjects(exploreObjs, car.position);
+      if (currentNearObj && !explorePanelOpen) {
+        explorePanelTag.textContent = currentNearObj.label + ' — [ E ] to inspect';
+        explorePanel.classList.remove('hidden');
+      } else if (!currentNearObj && !explorePanelOpen) {
+        explorePanel.classList.add('hidden');
+      }
+    }
+    composer.render();
+    return;
+  }
+
+  // ── Racing: player drives vs ghost ───────────────────────────────
   if (!story.isBlocking()) {
     const w     = keys['KeyW'] || keys['ArrowUp'];
     const s     = keys['KeyS'] || keys['ArrowDown'];
     const a     = keys['KeyA'] || keys['ArrowLeft'];
     const d     = keys['KeyD'] || keys['ArrowRight'];
-    const brake = keys['Space'] || keys['KeyB'];  // hard brake
+    const brake = keys['Space'] || keys['KeyB'];
 
-    // ── Throttle / brake ─────────────────────────────────────────
     if (brake) {
-      // Hard brake — car decelerates rapidly regardless of direction
       const sign  = Math.sign(carState.speed);
       const decay = PHY.hardBrake * delta;
       carState.speed = Math.abs(carState.speed) > decay

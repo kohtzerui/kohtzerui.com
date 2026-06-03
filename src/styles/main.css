@@ -211,6 +211,67 @@ html, body {
 }
 #pit-card.hidden { display: none; }
 
+/* =========================================================
+   READY SCREEN
+   ========================================================= */
+#ready-screen {
+  position: fixed; inset: 0; z-index: 80;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(0, 0, 4, 0.88);
+  backdrop-filter: blur(12px);
+  animation: fadeIn 0.5s ease;
+}
+#ready-screen.hidden { display: none; }
+
+#ready-inner {
+  text-align: center;
+  max-width: 560px;
+  animation: slideIn 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.ready-eyebrow {
+  font-family: var(--mono);
+  font-size: 10px; letter-spacing: 4px;
+  color: var(--orange); text-transform: uppercase;
+  margin-bottom: 18px;
+}
+#ready-title {
+  font-family: var(--mono);
+  font-size: clamp(36px, 6vw, 64px);
+  font-weight: 700; letter-spacing: 4px;
+  color: #fff;
+  text-shadow: 0 0 30px rgba(255,255,255,0.4);
+  margin-bottom: 20px;
+}
+.ready-ghost-time {
+  font-family: var(--mono);
+  font-size: 22px; font-weight: 700;
+  color: var(--cyan);
+  text-shadow: 0 0 20px var(--cyan-glow);
+  letter-spacing: 3px;
+  margin-bottom: 14px;
+}
+.ready-sub {
+  font-family: var(--sans);
+  font-size: 14px; color: var(--muted);
+  line-height: 1.6; margin-bottom: 36px;
+}
+#ready-btn {
+  display: inline-block;
+  padding: 16px 52px;
+  font-family: var(--mono); font-size: 14px;
+  font-weight: 700; letter-spacing: 4px;
+  text-transform: uppercase;
+  color: #000; background: var(--cyan);
+  border: none; border-radius: 4px; cursor: pointer;
+  box-shadow: 0 0 40px rgba(0,255,204,0.5);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+#ready-btn:hover {
+  transform: scale(1.04);
+  box-shadow: 0 0 60px rgba(0,255,204,0.7);
+}
+
+
 #pit-card-inner {
   background: var(--card-bg);
   border: 1px solid var(--cyan);

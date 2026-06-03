@@ -198,6 +198,8 @@ export class GhostPlayer {
   update(lapElapsed, playerTp) {
     if (!this._playing || !this.frames.length || !this.mesh) return null;
 
+    this._currentElapsed = lapElapsed;  // track for isFinished()
+
     // Advance frame pointer by elapsed time
     let i = this._frameI;
     while (i < this.frames.length - 2 && this.frames[i + 1].t <= lapElapsed) i++;
@@ -227,6 +229,33 @@ export class GhostPlayer {
       this.frames[mid].tp <= playerTp ? (lo = mid) : (hi = mid);
     }
     return lapElapsed - this.frames[lo].t; // + = visitor behind ghost
+  }
+
+  /** Change ghost opacity. 1.0 = solid cinematic, 0.6 = racing semi-transparent. */
+  setOpacity(value) {
+    if (!this.mesh) return;
+    this.mesh.traverse(child => {
+      if (child.isMesh && child.material) {
+        child.material.opacity     = value;
+        child.material.transparent = value < 1.0;
+        child.material.depthWrite  = value >= 1.0;
+        child.material.needsUpdate = true;
+      }
+    });
+  }
+
+  /** True when ghost playback has passed its last recorded frame. */
+  isFinished() {
+    if (!this._playing || !this.frames.length) return false;
+    const lastT = this.frames[this.frames.length - 1].t;
+    return (this._currentElapsed || 0) > lastT + 0.8;
+  }
+
+  /** Forward vector from the current ghost frame (for camera follow). */
+  getForward() {
+    if (!this.frames.length || this._frameI >= this.frames.length) return null;
+    const f = this.frames[this._frameI];
+    return new THREE.Vector3(f.fx, 0, f.fz).normalize();
   }
 
   getGhostLapMs() { return this.lapMs; }
