@@ -372,7 +372,7 @@ function animate() {
     lapElapsed = (performance.now() - lapStartMs) / 1000;
     ghostPlay.update(lapElapsed, null);
     updateCameraForGhost(delta);
-    if (ghostPlay.mesh?.position) story.update(ghostPlay.mesh.position);
+    if (ghostPlay.mesh?.position) story.update(ghostPlay.mesh.position, false); // cinematic: narration only, no finish trigger
     minimap.draw(ghostPlay.mesh?.position || startPos);
 
     // Detect ghost lap end → show ready screen

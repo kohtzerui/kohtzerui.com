@@ -45,8 +45,11 @@ export class StorySystem {
     });
   }
 
-  /** Call every frame with current car world position (THREE.Vector3). */
-  update(carPos) {
+  /** Call every frame with current car world position (THREE.Vector3).
+   *  @param {THREE.Vector3} carPos
+   *  @param {boolean} checkFinish - set false during cinematic to prevent ghost crossing triggering contact screen
+   */
+  update(carPos, checkFinish = true) {
     if (this.contactOpen) return;
 
     // — Story narration zones —
@@ -63,7 +66,7 @@ export class StorySystem {
     });
 
     // — Finish line (line-crossing check) —
-    if (!this.triggered.has('finish')) {
+    if (checkFinish && !this.triggered.has('finish')) {
       // Arm the finish after the car has passed the first story zone
       if (!this._finishArmed && this.triggered.has(STORY_ZONES[0].id)) {
         this._finishArmed = true;
