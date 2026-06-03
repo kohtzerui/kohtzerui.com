@@ -226,9 +226,153 @@ export function createTrack(scene) {
 
   addGravel(scene, curve);
   addKerbs(scene, curve);
-
+  addOuterFence(scene, curve);
+  addInfieldGround(scene, curve);   // floating island fill
 
   return { curve };
+}
+
+// ── Gravel/runoff — dark grey ribbon, straights only ──────────
+// ── Outer Fence — chain-link style along the outer circuit boundary ──
+/**
+ * Builds a chain-link fence along the outer (right-side) edge of the track.
+ * Posts every POST_STEP samples, three horizontal rails, semi-transparent panel.
+ * Inner boundary is left completely open.
+ */
+function addOuterFence(scene, curve) {
+  const SAMPLES     = 800;              // spline sample count
+  const FENCE_OFFSET = TRACK_WIDTH / 2 + 9; // just outside gravel (gravel = +4)
+  const FENCE_H     = 7;               // fence height in world units
+  const POST_STEP   = 14;              // samples between posts (~every 15 units)
+
+  // 1. Sample fence base positions along the outer edge
+  const fencePts = [];
+  for (let i = 0; i <= SAMPLES; i++) {
+    const t   = i / SAMPLES;
+    const pt  = curve.getPoint(t);
+    const tan = curve.getTangent(t).normalize();
+    const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
+    // Outer edge = +side direction (right of travel, anti-clockwise circuit)
+    fencePts.push(pt.clone().addScaledVector(side, FENCE_OFFSET));
+  }
+
+  // 2. Fence posts — thin cylinders every POST_STEP samples
+  const postMat = new THREE.MeshStandardMaterial({
+    color: 0x666677, metalness: 0.7, roughness: 0.4,
+  });
+  for (let i = 0; i < fencePts.length; i += POST_STEP) {
+    const p    = fencePts[i];
+    const post = new THREE.Mesh(
+      new THREE.CylinderGeometry(0.18, 0.18, FENCE_H, 5),
+      postMat
+    );
+    post.position.set(p.x, FENCE_H / 2, p.z);
+    scene.add(post);
+  }
+
+  // 3. Horizontal rails — top, 2/3, and 1/3 height
+  const railMat = new THREE.LineBasicMaterial({ color: 0x888899 });
+  [FENCE_H, FENCE_H * 0.65, FENCE_H * 0.3].forEach(y => {
+    const pts = fencePts.map(p => new THREE.Vector3(p.x, y, p.z));
+    scene.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints(pts),
+      railMat
+    ));
+  });
+
+  // 4. Chain-link canvas texture (diamond/crosshatch pattern)
+  const cv  = document.createElement('canvas');
+  cv.width  = 64; cv.height = 64;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, 64, 64);
+  ctx.strokeStyle = 'rgba(180,190,210,0.55)';
+  ctx.lineWidth   = 1.5;
+  const cell = 8;
+  // Diagonal grid
+  for (let x = -64; x < 128; x += cell) {
+    ctx.beginPath(); ctx.moveTo(x, 0);      ctx.lineTo(x + 64, 64);  ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(x + 64, 0); ctx.lineTo(x,      64);  ctx.stroke();
+  }
+  const chainTex = new THREE.CanvasTexture(cv);
+  chainTex.wrapS = chainTex.wrapT = THREE.RepeatWrapping;
+  chainTex.repeat.set(1, 0.5);
+
+  // 5. Semi-transparent mesh panels between adjacent fence points
+  const panelMat = new THREE.MeshBasicMaterial({
+    map         : chainTex,
+    transparent : true,
+    opacity     : 0.55,
+    side        : THREE.DoubleSide,
+    depthWrite  : false,
+  });
+
+  const verts = [];
+  const idx   = [];
+  const uvs   = [];
+  const bottom = 0.4;   // slightly above ground
+
+  for (let i = 0; i < fencePts.length - 1; i++) {
+    const a = fencePts[i];
+    const b = fencePts[i + 1];
+    const vi = i * 4;
+    // Quad: two bottom + two top verts
+    verts.push(
+      a.x, bottom,   a.z,
+      a.x, FENCE_H,  a.z,
+      b.x, bottom,   b.z,
+      b.x, FENCE_H,  b.z,
+    );
+    uvs.push(0, 0,  0, 1,  1, 0,  1, 1);
+    idx.push(vi, vi+1, vi+2,  vi+1, vi+3, vi+2);
+  }
+  // Close the loop
+  const a = fencePts[fencePts.length - 1], b = fencePts[0];
+  const vi = (fencePts.length - 1) * 4;
+  verts.push(a.x, bottom, a.z, a.x, FENCE_H, a.z, b.x, bottom, b.z, b.x, FENCE_H, b.z);
+  uvs.push(0, 0,  0, 1,  1, 0,  1, 1);
+  idx.push(vi, vi+1, vi+2,  vi+1, vi+3, vi+2);
+
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+  geo.setAttribute('uv',       new THREE.Float32BufferAttribute(uvs,   2));
+  geo.setIndex(idx);
+  geo.computeVertexNormals();
+  scene.add(new THREE.Mesh(geo, panelMat));
+}
+
+// ── Infield Ground — floating island inside the track ────────────
+/**
+ * Fills everything INSIDE the outer fence with green ground.
+ * Uses the outer fence boundary as the Shape polygon (reversed winding
+ * so THREE.Shape fills the interior, not the exterior).
+ * The track asphalt ribbon (y=0.05) renders on top, so only the
+ * non-track areas (infield + shoulder) show green.
+ */
+function addInfieldGround(scene, curve) {
+  const N           = 250;
+  const FENCE_OFFSET = TRACK_WIDTH / 2 + 10;  // fence is at +9, grass extends +1 beyond
+
+  // Sample outer fence boundary positions
+  const pts2D = [];
+  for (let i = 0; i < N; i++) {
+    const t    = i / N;
+    const pt   = curve.getPoint(t);
+    const tan  = curve.getTangent(t).normalize();
+    const side = new THREE.Vector3().crossVectors(tan, UP).normalize();
+    // Outer boundary = right side of travel (positive side)
+    const outer = pt.clone().addScaledVector(side, FENCE_OFFSET);
+    pts2D.push(new THREE.Vector2(outer.x, -outer.z));  // negate z: rotateX(-PI/2) maps shape_y → -world_z
+  }
+
+  const shape = new THREE.Shape(pts2D);
+  const geo   = new THREE.ShapeGeometry(shape, 2);
+  geo.rotateX(-Math.PI / 2);   // XY plane → XZ plane (flat on ground)
+
+  const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+    color: 0x33dd44, roughness: 1, metalness: 0,
+  }));
+  mesh.position.y = 0.03;
+  scene.add(mesh);
 }
 
 // ── Gravel/runoff — dark grey ribbon, straights only ──────────

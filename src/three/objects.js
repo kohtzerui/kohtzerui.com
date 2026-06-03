@@ -1,76 +1,53 @@
 import * as THREE from 'three';
 
 /**
- * ExploreObjects — 3D interactable HPC domain objects placed outside the
- * circuit. Only reachable in EXPLORE mode (no barriers).
+ * Floor decals — flat PNG planes placed on the circuit infield ground.
+ * Rendered with MeshBasicMaterial (unlit) so they stay vivid at night.
  *
- * Each object glows when the car is within GLOW_RADIUS, and the info
- * panel slides in. Press E to open/close the full detail panel.
- *
- * Objects are placed well outside the circuit boundary:
- *   Circuit X range ≈ -850 → +720  /  Z range ≈ -570 → +250
+ * Each entry: { src: '/file.png', x, z, width, height, rotY }
+ * rotY rotates the decal around the Y axis so it faces the right direction.
+ */
+
+/**
+ * ExploreObjects — temporarily disabled, rethinking display approach.
  */
 
 const GLOW_RADIUS   = 80;   // start glowing at this distance
 const PANEL_RADIUS  = 45;   // panel slides in at this distance
 
-export const HPC_OBJECTS = [
-  {
-    id:    'systems',
-    label: '// SYSTEMS',
-    title: 'Linux & Systems Programming',
-    body:  'Low-level systems work: kernel modules, device drivers, memory allocators. The penguin runs everything that matters in HPC — from the OS scheduler to MPI runtimes.',
-    tags:  ['Linux', 'C', 'Kernel', 'MPI', 'POSIX'],
-    position: new THREE.Vector3(-445, 0, -445),
-  },
-  {
-    id:    'fpga',
-    label: '// HARDWARE',
-    title: 'FPGA & Hardware Accelerators',
-    body:  'Custom silicon for custom problems. FPGAs let you implement hardware-optimised datapaths — matrix engines, network offload, custom FFTs — at a fraction of ASIC cost.',
-    tags:  ['FPGA', 'Verilog', 'HLS', 'OpenCL', 'PCIe'],
-    position: new THREE.Vector3(-395, 0,  390),
-  },
-  {
-    id:    'gpu',
-    label: '// GPU CLUSTER',
-    title: 'GPU Clusters & AI Inference',
-    body:  'Parallel computing at scale. From CUDA kernels to distributed training across nodes, GPU clusters are the backbone of modern HPC workloads and AI inference pipelines.',
-    tags:  ['CUDA', 'NCCL', 'PyTorch', 'Triton', 'InfiniBand'],
-    position: new THREE.Vector3( 190, 0,   -4),
-  },
-];
+// ── HPC_OBJECTS temporarily disabled — rethinking display approach ──
+// export const HPC_OBJECTS = [
+//   {
+//     id:    'systems',
+//     label: '// SYSTEMS',
+//     title: 'Linux & Systems Programming',
+//     body:  'Low-level systems work: kernel modules, device drivers, memory allocators. The penguin runs everything that matters in HPC — from the OS scheduler to MPI runtimes.',
+//     tags:  ['Linux', 'C', 'Kernel', 'MPI', 'POSIX'],
+//     position: new THREE.Vector3(-445, 0, -445),
+//   },
+//   {
+//     id:    'fpga',
+//     label: '// HARDWARE',
+//     title: 'FPGA & Hardware Accelerators',
+//     body:  'Custom silicon for custom problems. FPGAs let you implement hardware-optimised datapaths — matrix engines, network offload, custom FFTs — at a fraction of ASIC cost.',
+//     tags:  ['FPGA', 'Verilog', 'HLS', 'OpenCL', 'PCIe'],
+//     position: new THREE.Vector3(-395, 0,  390),
+//   },
+//   {
+//     id:    'gpu',
+//     label: '// GPU CLUSTER',
+//     title: 'GPU Clusters & AI Inference',
+//     body:  'Parallel computing at scale. From CUDA kernels to distributed training across nodes, GPU clusters are the backbone of modern HPC workloads and AI inference pipelines.',
+//     tags:  ['CUDA', 'NCCL', 'PyTorch', 'Triton', 'InfiniBand'],
+//     position: new THREE.Vector3( 190, 0,   -4),
+//   },
+// ];
+export const HPC_OBJECTS = [];   // disabled — re-enable above when ready
 
 /** Build all 3D objects and return the group + list of interactables. */
 export function createExploreObjects(scene) {
-  const interactables = [];
-
-  HPC_OBJECTS.forEach(obj => {
-    const group = new THREE.Group();
-    group.position.copy(obj.position);
-
-    let mesh;
-    if (obj.id === 'systems') {
-      mesh = buildPC(group);
-    } else if (obj.id === 'fpga') {
-      mesh = buildFPGA(group);
-    } else if (obj.id === 'gpu') {
-      mesh = buildGPUCluster(group);
-    }
-
-    // Floating label above object
-    addLabel(group, obj.label);
-
-    // Point light that glows on proximity (starts dim)
-    const light = new THREE.PointLight(0x00ffcc, 0, 120);
-    light.position.set(0, 25, 0);
-    group.add(light);
-
-    scene.add(group);
-    interactables.push({ ...obj, group, light });
-  });
-
-  return interactables;
+  // Objects disabled — return empty list so explore mode still works
+  return [];
 }
 
 /** Update glow intensity based on car proximity. Returns nearest object within PANEL_RADIUS or null. */
@@ -99,6 +76,158 @@ export function updateExploreObjects(interactables, carPos) {
   });
 
   return nearest;
+}
+
+// ── Floor Decals (commented out — testing billboards/gantries instead) ──
+// export const FLOOR_DECALS = [
+//   { src: '/decal-test.png', x: 0, z: -120, width: 200, height: 200, rotY: 0 },
+// ];
+// export function createFloorDecals(scene) { /* disabled */ }
+
+// ── Trackside Billboards ──────────────────────────────────────────────
+
+/**
+ * A large vertical billboard panel alongside the track,
+ * like an F1 trackside advertising board on the barriers.
+ *
+ * Placed on the main straight (x≈680, east side of the straight).
+ * The panel faces west so it's readable as the car drives north.
+ *
+ *   [post]
+ *   ┌──────────────────────────┐
+ *   │      BANNER PANEL        │  ← textured PNG
+ *   └──────────────────────────┘
+ */
+export function createBillboards(scene) {
+  const loader  = new THREE.TextureLoader();
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.8, roughness: 0.3 });
+
+  // Main straight billboard — east side, facing the cars
+  const billboards = [
+    { src: '/banner-test.png', x: 690, z: -220, rotY: Math.PI / 2, w: 75, h: 28 },
+  ];
+
+  billboards.forEach(b => {
+    const group = new THREE.Group();
+    group.position.set(b.x, 0, b.z);
+    group.rotation.y = b.rotY;
+
+    // Support posts (two thin vertical pillars)
+    [-b.w * 0.4, b.w * 0.4].forEach(xOff => {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(2.5, b.h + 8, 2.5), steelMat);
+      post.position.set(xOff, (b.h + 8) / 2, -1);
+      group.add(post);
+    });
+
+    // Back panel (dark backing board)
+    const back = new THREE.Mesh(
+      new THREE.BoxGeometry(b.w + 4, b.h + 4, 1.5),
+      new THREE.MeshStandardMaterial({ color: 0x0a0a14, metalness: 0.4, roughness: 0.8 })
+    );
+    back.position.set(0, b.h / 2 + 6, -1.5);
+    group.add(back);
+
+    // Banner face — textured PNG, tilted ~35° toward camera
+    loader.load(b.src, (tex) => {
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const face = new THREE.Mesh(
+        new THREE.PlaneGeometry(b.w, b.h),
+        new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+      );
+      face.position.set(0, b.h / 2 + 6, -0.7);
+      face.rotation.x = -Math.PI / 5;   // tilt top back so camera reads face
+      group.add(face);
+    });
+
+    // Subtle cyan underglow light
+    const light = new THREE.PointLight(0x00ffcc, 1.2, 180);
+    light.position.set(0, b.h + 10, 5);
+    group.add(light);
+
+    scene.add(group);
+  });
+}
+
+// ── Overhead Gantry Banner ────────────────────────────────────────────
+
+/**
+ * An overhead arch/gantry spanning the full track width,
+ * like the Heineken/timing gantries over F1 circuits.
+ *
+ *   ┌──────── BANNER ─────────┐
+ *   │  (textured PNG panel)   │
+ *   └─────────────────────────┘
+ *   |                         |   ← vertical pillars
+ *   ●                         ●   ← base plates
+ *
+ * Positioned over the main straight so it's dramatic during the lap.
+ */
+export function createGantry(scene) {
+  const loader    = new THREE.TextureLoader();
+  const steelMat  = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.9, roughness: 0.2 });
+  const plateMat  = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.6, roughness: 0.5 });
+
+  // Gantry over the main straight — high enough for the car to pass under
+  const span    = 68;   // track width + shoulders
+  const height  = 38;   // pillar height
+  const bannerH = 14;   // banner panel height
+  const bannerW = span - 6;
+
+  const group = new THREE.Group();
+  group.position.set(610, 0, -320);  // over the main straight
+  // Rotate so the arch spans east-west across the straight (straight goes north-south)
+  group.rotation.y = 0;
+
+  // Left pillar
+  const lPillar = new THREE.Mesh(new THREE.BoxGeometry(5, height, 5), steelMat);
+  lPillar.position.set(-span / 2, height / 2, 0);
+  group.add(lPillar);
+
+  // Right pillar
+  const rPillar = new THREE.Mesh(new THREE.BoxGeometry(5, height, 5), steelMat);
+  rPillar.position.set(span / 2, height / 2, 0);
+  group.add(rPillar);
+
+  // Horizontal top beam
+  const beam = new THREE.Mesh(new THREE.BoxGeometry(span + 5, 5, 5), steelMat);
+  beam.position.set(0, height, 0);
+  group.add(beam);
+
+  // Base plates
+  [-span / 2, span / 2].forEach(x => {
+    const plate = new THREE.Mesh(new THREE.BoxGeometry(12, 1.5, 12), plateMat);
+    plate.position.set(x, 0.75, 0);
+    group.add(plate);
+  });
+
+  // Banner backing (dark panel hanging from beam)
+  const backing = new THREE.Mesh(
+    new THREE.BoxGeometry(bannerW, bannerH, 1),
+    new THREE.MeshStandardMaterial({ color: 0x070712, metalness: 0.3, roughness: 0.9 })
+  );
+  backing.position.set(0, height - bannerH / 2 - 3, -3);
+  group.add(backing);
+
+  // Banner face — textured PNG, tilted ~35° downward toward approaching car
+  loader.load('/banner-test.png', (tex) => {
+    tex.colorSpace = THREE.SRGBColorSpace;
+    const face = new THREE.Mesh(
+      new THREE.PlaneGeometry(bannerW, bannerH),
+      new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+    );
+    face.position.set(0, height - bannerH / 2 - 3, -2.4);
+    face.rotation.x = -Math.PI / 5;   // tilt so camera sees face instead of edge
+    group.add(face);
+  });
+
+  // Accent lights on the beam (two small spotlights pointing down)
+  [-span * 0.3, 0, span * 0.3].forEach(x => {
+    const l = new THREE.PointLight(0x00ffcc, 0.6, 120);
+    l.position.set(x, height - 5, -6);
+    group.add(l);
+  });
+
+  scene.add(group);
 }
 
 // ── 3D Object builders ────────────────────────────────────────────

@@ -18,6 +18,8 @@ import { TRACK_WIDTH }       from './game/circuit.js';
 const { scene, camera, renderer, composer } = createScene();
 const { curve } = createTrack(scene);
 createEnvironment(scene);
+// createBillboards(scene);  // disabled — too ugly
+// createGantry(scene);      // disabled — too ugly
 const car          = createCar(scene);
 const minimap      = new Minimap('minimap-canvas');
 const story        = new StorySystem(curve);
