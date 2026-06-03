@@ -275,10 +275,12 @@ function launchGame(mode) {
   const litInterval = setInterval(() => {
     if (lit < rLights.length) {
       rLights[lit++].classList.add('on');
+      audio.playLightBeep();           // beep for each red light
     } else {
       clearInterval(litInterval);
       setTimeout(() => {
         rLights.forEach(l => l.classList.remove('on'));
+        audio.playLightsOut();         // GO! — burst + engine swell
         setTimeout(() => {
           startScreen.style.opacity = '0';
           setTimeout(() => {
@@ -295,7 +297,7 @@ function launchGame(mode) {
         }, 350);
       }, 750);
     }
-  }, 420);
+  }, 1000);
 }
 
 

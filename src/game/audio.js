@@ -38,6 +38,7 @@ export class CarAudio {
     this._prevSpeed    = 0;
     this._crackleTimer = 0;      // frame cooldown between pops
     this._started      = false;
+    this._beepBuffer   = null;   // decoded audio for the start-light beep
   }
 
   // ── Public API ─────────────────────────────────────────────────
@@ -51,6 +52,7 @@ export class CarAudio {
     this._buildSqueal();
     this._buildWind();
     this._buildCrackle();
+    this._loadBeep();   // pre-fetch and decode the beep audio
   }
 
   /**
@@ -129,6 +131,103 @@ export class CarAudio {
     this._squealGain.gain.setTargetAtTime(0,  t, 0.12);
     this._windGain.gain.setTargetAtTime(0,    t, 0.25);
     this._crackleGain.gain.setTargetAtTime(0, t, 0.08);
+  }
+
+  /**
+   * Play one F1 start-light beep using the real recorded audio file.
+   * Falls back to a synthesised tone if the file hasn't loaded yet.
+   */
+  playLightBeep() {
+    if (!this._ctx) return;
+    const ctx = this._ctx;
+
+    if (this._beepBuffer) {
+      // Play the real recording
+      const src = ctx.createBufferSource();
+      src.buffer = this._beepBuffer;
+      src.connect(ctx.destination);
+      src.start(ctx.currentTime);
+    } else {
+      // Fallback: synthesised beep while file loads
+      const t    = ctx.currentTime;
+      const gain = ctx.createGain();
+      gain.gain.setValueAtTime(0, t);
+      gain.gain.linearRampToValueAtTime(0.38, t + 0.005);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+      const o = ctx.createOscillator();
+      o.type = 'sine';
+      o.frequency.value = 1320;
+      o.connect(gain);
+      gain.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.22);
+    }
+  }
+
+  /** Pre-fetch and decode the beep audio file into a reusable AudioBuffer. */
+  async _loadBeep() {
+    try {
+      const res  = await fetch('/start-beep.m4a');
+      const data = await res.arrayBuffer();
+      this._beepBuffer = await this._ctx.decodeAudioData(data);
+    } catch (e) {
+      console.warn('CarAudio: could not load start-beep.m4a, using synth fallback', e);
+    }
+  }
+
+  /**
+   * Play the lights-out GO sound (broadband burst + engine launch swell).
+   * Triggered when all five lights go dark — signals the race start.
+   */
+  playLightsOut() {
+    if (!this._ctx) return;
+    const ctx = this._ctx;
+    const t   = ctx.currentTime;
+
+    // ── Noise burst: crowd + tyre roar ───────────────────────────
+    const noiseBuf = _noiseBuffer(ctx, 0.7);
+    const noiseSrc = ctx.createBufferSource();
+    noiseSrc.buffer = noiseBuf;
+
+    // Bandpass centred around ~700 Hz (crowd presence)
+    const bp = ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.value = 700;
+    bp.Q.value = 0.6;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.setValueAtTime(0.28, t);
+    noiseGain.gain.exponentialRampToValueAtTime(0.001, t + 0.65);
+
+    noiseSrc.connect(bp);
+    bp.connect(noiseGain);
+    noiseGain.connect(ctx.destination);
+    noiseSrc.start(t);
+
+    // ── Engine launch swell: sawtooth sweep 150 → 420 Hz ─────────
+    const engOsc = ctx.createOscillator();
+    engOsc.type = 'sawtooth';
+    engOsc.frequency.setValueAtTime(150, t);
+    engOsc.frequency.exponentialRampToValueAtTime(420, t + 0.55);
+
+    const engShape = ctx.createWaveShaper();
+    engShape.curve = _makeDistortionCurve(180);
+
+    // HP to clean up the very bottom
+    const engHP = ctx.createBiquadFilter();
+    engHP.type = 'highpass';
+    engHP.frequency.value = 90;
+
+    const engGain = ctx.createGain();
+    engGain.gain.setValueAtTime(0, t);
+    engGain.gain.linearRampToValueAtTime(0.18, t + 0.04); // quick ramp-up
+    engGain.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+
+    engOsc.connect(engShape);
+    engShape.connect(engHP);
+    engHP.connect(engGain);
+    engGain.connect(ctx.destination);
+    engOsc.start(t);
+    engOsc.stop(t + 0.75);
   }
 
   // ── Builders ────────────────────────────────────────────────────
