@@ -304,12 +304,13 @@ startRaceBtn.addEventListener('click',    () => launchGame('race'));
 startExploreBtn.addEventListener('click', () => launchGame('explore'));
 
 // ─────────────────────────────────────────────────────────────────
-// Cinematic → Racing transition
+// Cinematic → Ready screen → Racing
 // ─────────────────────────────────────────────────────────────────
 const readyScreen  = document.getElementById('ready-screen');
 const readyLapTime = document.getElementById('ready-lap-time');
 const readyBtn     = document.getElementById('ready-btn');
 
+/** Show after the cinematic lap: ghost time + contact links. */
 function showReadyScreen() {
   const ms = ghostPlay.getGhostLapMs();
   if (ms && readyLapTime) {
@@ -374,7 +375,7 @@ function animate() {
     if (ghostPlay.mesh?.position) story.update(ghostPlay.mesh.position);
     minimap.draw(ghostPlay.mesh?.position || startPos);
 
-    // Detect ghost lap end → show "Are you ready?"
+    // Detect ghost lap end → show ready screen
     if (!ghostFinishHandled && ghostPlay.isFinished()) {
       ghostFinishHandled = true;
       gamePhase = 'ready';
