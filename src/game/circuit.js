@@ -138,4 +138,5 @@ export const PIT_STOPS = [
 ];
 
 export const FINISH_T      = 0.996;   // slightly past the gantry (gantry is at 0.99)
-export const FINISH_RADIUS = 10;
+export const FINISH_RADIUS = 28;       // covers full track width (22u) + margin
+

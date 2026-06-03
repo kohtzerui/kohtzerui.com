@@ -7,7 +7,9 @@ import { Minimap }           from './three/minimap.js';
 import { createExploreObjects, updateExploreObjects } from './three/objects.js';
 import { StorySystem }       from './game/story.js';
 import { HUD }               from './game/hud.js';
+import { GhostRecorder, GhostPlayer } from './game/ghost.js';
 import { TRACK_WIDTH }       from './game/circuit.js';
+
 
 // ─────────────────────────────────────────────────────────────────
 // Scene init
@@ -20,6 +22,11 @@ const minimap      = new Minimap('minimap-canvas');
 const story        = new StorySystem(curve);
 const hud          = new HUD();
 const exploreObjs  = createExploreObjects(scene);
+const ghostRec     = new GhostRecorder();  // dev-only recorder (?record=1)
+const ghostPlay    = new GhostPlayer(scene);
+ghostPlay.load();  // async — loads /ghost_lap.json in background
+
+
 
 // ─────────────────────────────────────────────────────────────────
 // Car spawn
@@ -69,6 +76,9 @@ for (let i = 0; i < BARRIER_N; i++) {
 const _sideVec = new THREE.Vector3();
 const _offVec  = new THREE.Vector3();
 
+// Track progress exposed from clampToTrack (0-1 around circuit)
+let carTrackProgress = 0;
+
 function clampToTrack() {
   let minD2 = Infinity;
   let bestI = 0;
@@ -80,6 +90,8 @@ function clampToTrack() {
     const d2 = dx * dx + dz * dz;
     if (d2 < minD2) { minD2 = d2; bestI = i; }
   }
+
+  carTrackProgress = bestI / BARRIER_N;
 
   _sideVec.crossVectors(_bTans[bestI], _UP).normalize();
   _offVec.subVectors(car.position, _bPts[bestI]);
@@ -137,14 +149,48 @@ function updateCamera(delta) {
 // ─────────────────────────────────────────────────────────────────
 // Lap restart
 // ─────────────────────────────────────────────────────────────────
+let lapElapsed = 0;
+let lapStartMs = 0;
+let lapNumber  = 0;  // 0 = not started, 1 = intro/story lap, 2+ = visitor racing
+
+// When the finish line is crossed, finalise ghost recording and show result
+window.addEventListener('lap-complete', () => {
+  if (gameMode !== 'race') return;
+  const lapMs = performance.now() - lapStartMs;
+  // Offer ghost download if in record mode
+  ghostRec.finish(lapMs);
+  // Show lap time in HUD
+  if (lapNumber > 1) {
+    const ghostMs = ghostPlay.getGhostLapMs();
+    const delta   = ghostMs !== null ? lapMs - ghostMs : null;
+    hud.showLapResult(lapMs, delta < 0, delta);
+  }
+});
+
 window.addEventListener('lap-restart', () => {
   car.position.copy(startPos);
   carState.forward.copy(startTan);
   carState.speed = 0;
   carState.lean  = 0;
-  turnInput = 0;
-  if (gameMode === 'race') hud.start();
+  turnInput      = 0;
+  lapElapsed     = 0;
+  lapStartMs     = performance.now();
+  lapNumber++;
+
+  if (gameMode === 'race') {
+    hud.start();
+    ghostRec.start();  // only records if ?record=1 is in URL
+
+    // Lap 2+ → start ghost playback (visitor races against the intro lap)
+    if (lapNumber > 1 && ghostPlay.hasGhost()) {
+      ghostPlay.start();
+    } else {
+      ghostPlay.stop();
+    }
+  }
 });
+
+
 
 // ─────────────────────────────────────────────────────────────────
 // Explore panel — E key toggles info for nearest HPC object
@@ -192,12 +238,10 @@ function launchGame(mode) {
   startRaceBtn.disabled = startExploreBtn.disabled = true;
 
   if (mode === 'explore') {
-    // Explore: skip race lights, go straight in — same top speed as race
     startScreen.style.opacity = '0';
     setTimeout(() => {
       startScreen.style.display = 'none';
       gameStarted = true;
-      if (mode === 'race') hud.start();
     }, 600);
     return;
   }
@@ -217,13 +261,19 @@ function launchGame(mode) {
           setTimeout(() => {
             startScreen.style.display = 'none';
             gameStarted = true;
+            lapNumber   = 1;   // intro/story lap
+            lapStartMs  = performance.now();
             hud.start();
+            ghostRec.start();  // record intro lap (only active with ?record=1)
+            // Ghost does NOT play on lap 1 — that's the story lap
           }, 900);
         }, 350);
       }, 750);
     }
   }, 420);
+
 }
+
 
 startRaceBtn.addEventListener('click',    () => launchGame('race'));
 startExploreBtn.addEventListener('click', () => launchGame('explore'));
@@ -299,6 +349,14 @@ function animate() {
     carState.lean += (-turnInput * 0.05 * speedFactor - carState.lean) * Math.min(1, 8 * delta);
     car.rotateZ(carState.lean);
 
+    // ── Ghost record / playback ───────────────────────────────
+    if (gameMode === 'race') {
+      lapElapsed = (performance.now() - lapStartMs) / 1000;
+      ghostRec.record(car.position, carState.forward, lapElapsed, carTrackProgress);
+      const delta = ghostPlay.update(lapElapsed, carTrackProgress);
+      hud.showGhostDelta(delta);
+    }
+
     updateCamera(delta);
     hud.update(carState.speed, PHY.maxSpeed);
     minimap.draw(car.position);
@@ -306,9 +364,7 @@ function animate() {
     if (gameMode === 'race') {
       story.update(car.position);
     } else {
-      // Explore mode: update object glow + track nearest
       currentNearObj = updateExploreObjects(exploreObjs, car.position);
-      // Show a hint when close to an object but panel not open
       if (currentNearObj && !explorePanelOpen) {
         explorePanelTag.textContent = currentNearObj.label + ' — [ E ] to inspect';
         explorePanel.classList.remove('hidden');

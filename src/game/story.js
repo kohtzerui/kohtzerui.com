@@ -16,6 +16,10 @@ export class StorySystem {
     // Pre-compute 3D positions for each zone
     this.zonePositions  = STORY_ZONES.map(z => curve.getPoint(z.t));
     this.finishPosition = curve.getPoint(FINISH_T);
+    // Finish line is a line perpendicular to the track tangent
+    this.finishTangent  = curve.getTangent(FINISH_T).normalize();
+    this._finishSide    = null;   // sign of last frame's dot product
+    this._finishArmed   = false;  // only armed once car leaves the start area
 
     // DOM refs
     this.contactScreen = document.getElementById('contact-screen');
@@ -25,7 +29,11 @@ export class StorySystem {
     this.triggered   = new Set();
     this.contactOpen = false;
 
-    // Active audio (so we can stop previous clip on new zone)
+    // Voiceover subtitle card
+    this.voCard = document.getElementById('voiceover-card');
+    this._cardTimer = null;
+
+    // Active audio
     this._activeAudio  = null;
     this._activeSpeech = null;
 
@@ -51,13 +59,31 @@ export class StorySystem {
       }
     });
 
-    // — Finish line —
+    // — Finish line (line-crossing check) —
     if (!this.triggered.has('finish')) {
-      const dist = carPos.distanceTo(this.finishPosition);
-      if (dist < FINISH_RADIUS) {
-        this.triggered.add('finish');
-        this._stopSpeech();
-        this.showContact();
+      // Arm the finish after the car has passed the first story zone
+      if (!this._finishArmed && this.triggered.has(STORY_ZONES[0].id)) {
+        this._finishArmed = true;
+        this._finishSide  = null;  // reset side so first frame doesn't false-trigger
+      }
+
+      if (this._finishArmed) {
+        // Project car position onto the finish tangent
+        const dx   = carPos.x - this.finishPosition.x;
+        const dz   = carPos.z - this.finishPosition.z;
+        const side = dx * this.finishTangent.x + dz * this.finishTangent.z;
+
+        // Also check car is laterally within the track (not on the other straight)
+        const latX = dz * this.finishTangent.x - dx * this.finishTangent.z; // perp dist
+        const withinTrack = Math.abs(latX) < FINISH_RADIUS;
+
+        if (withinTrack && this._finishSide !== null && Math.sign(side) !== Math.sign(this._finishSide)) {
+          this.triggered.add('finish');
+          this._stopSpeech();
+          window.dispatchEvent(new CustomEvent('lap-complete'));
+          this.showContact();
+        }
+        this._finishSide = side;
       }
     }
   }
@@ -65,19 +91,26 @@ export class StorySystem {
   // ── Voice-over: prefer .mp3 file, fall back to Web Speech API ────
   _speak(id, text) {
     this._stopSpeech();
+    this._showCard(text);
     const audioPath = `/audio/${id}.mp3`;
-
-    // Try loading the .mp3 file first
     const audio = new Audio(audioPath);
     audio.addEventListener('canplaythrough', () => {
       this._activeAudio = audio;
-      audio.play().catch(() => this._tts(text)); // fallback if blocked
+      audio.play().catch(() => this._tts(text));
     }, { once: true });
-    audio.addEventListener('error', () => {
-      // File doesn't exist yet — use browser TTS
-      this._tts(text);
-    }, { once: true });
+    audio.addEventListener('error', () => this._tts(text), { once: true });
     audio.load();
+  }
+
+  _showCard(text) {
+    if (!this.voCard) return;
+    clearTimeout(this._cardTimer);
+    this.voCard.textContent = text;
+    this.voCard.classList.remove('hidden');
+    // Hold for 4 seconds then fade out
+    this._cardTimer = setTimeout(() => {
+      this.voCard.classList.add('hidden');
+    }, 4000);
   }
 
   _tts(text) {
@@ -115,8 +148,17 @@ export class StorySystem {
   closeContact() {
     this.contactOpen = false;
     this.contactScreen.classList.add('hidden');
-    this.triggered.clear();
+    this.reset();
     window.dispatchEvent(new CustomEvent('lap-restart'));
+  }
+
+  /** Reset all triggered zones (call at start of each new lap). */
+  reset() {
+    this.triggered.clear();
+    this._stopSpeech();
+    this._finishArmed = false;
+    this._finishSide  = null;
+    if (this.voCard) this.voCard.classList.add('hidden');
   }
 
   /** Returns true if a full-screen overlay is blocking gameplay. */

@@ -84,6 +84,48 @@ html, body {
   white-space: nowrap;
 }
 
+/* — Ghost delta — */
+.ghost-delta {
+  position: absolute;
+  top: 58px; left: 50%; transform: translateX(-50%);
+  font-family: var(--mono);
+  font-size: 13px; font-weight: 700;
+  letter-spacing: 2px;
+  padding: 4px 14px;
+  border-radius: 4px;
+  background: rgba(7,7,15,0.75);
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  transition: color 0.3s, text-shadow 0.3s;
+  pointer-events: none;
+}
+.ghost-delta:empty { display: none; }
+.ghost-delta.ahead  { color: #00ff88; text-shadow: 0 0 10px #00ff88; border: 1px solid rgba(0,255,136,0.3); }
+.ghost-delta.behind { color: #ff4444; text-shadow: 0 0 10px #ff4444; border: 1px solid rgba(255,68,68,0.3); }
+.ghost-delta.best   { color: #cc88ff; text-shadow: 0 0 14px #cc88ff; border: 1px solid rgba(204,136,255,0.35); }
+
+/* — Voiceover subtitle card — */
+.voiceover-card {
+  position: absolute;
+  bottom: 100px; left: 50%; transform: translateX(-50%);
+  max-width: 680px; width: max-content;
+  font-family: var(--sans);
+  font-size: 17px; font-weight: 400; line-height: 1.55;
+  color: #f0f0f0;
+  text-align: center;
+  padding: 14px 28px;
+  background: rgba(0, 0, 8, 0.72);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  backdrop-filter: blur(10px);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  white-space: pre-line;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.voiceover-card.hidden { opacity: 0; pointer-events: none; }
+
+
 /* — Minimap — */
 #hud-minimap {
   position: absolute;
