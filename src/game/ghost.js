@@ -29,9 +29,10 @@ const FWD_REF = new THREE.Vector3(1, 0, 0);
 function buildGhostMesh() {
   const g = new THREE.Group();
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x0088ff, emissive: 0x0044cc, emissiveIntensity: 0.6,
-    transparent: true, opacity: 0.35, depthWrite: false,
+    color: 0x0088ff, emissive: 0x0044cc, emissiveIntensity: 1.2,
+    transparent: true, opacity: 0.6, depthWrite: false,
   });
+
 
   function box(w, h, d, px, py, pz) {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat);

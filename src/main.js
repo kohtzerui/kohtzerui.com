@@ -177,18 +177,21 @@ window.addEventListener('lap-restart', () => {
   lapStartMs     = performance.now();
   lapNumber++;
 
+  console.log(`[lap-restart] lap=${lapNumber}, hasGhost=${ghostPlay.hasGhost()}, frames=${ghostPlay.frames.length}`);
+
   if (gameMode === 'race') {
     hud.start();
-    ghostRec.start();  // only records if ?record=1 is in URL
+    ghostRec.start();
 
-    // Lap 2+ → start ghost playback (visitor races against the intro lap)
     if (lapNumber > 1 && ghostPlay.hasGhost()) {
+      console.log('[lap-restart] Starting ghost playback');
       ghostPlay.start();
     } else {
       ghostPlay.stop();
     }
   }
 });
+
 
 
 
