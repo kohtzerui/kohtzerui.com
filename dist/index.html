@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Koh Tze Rui — HPC Engineer</title>
+  <meta name="description" content="Portfolio of Koh Tze Rui — HPC Engineer. Drive through my story on the Singapore Night Race circuit." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet" />
+  <script type="module" crossorigin src="/assets/index-DH8Hgow5.js"></script>
+  <link rel="stylesheet" crossorigin href="/assets/index-CJlsJXpp.css">
+</head>
+<body>
+  <div id="app">
+
+    <!-- ===== HUD ===== -->
+    <div id="hud">
+      <div id="hud-timer">
+        <span class="hud-label">LAP TIME</span>
+        <span id="timer-display">00:00.000</span>
+      </div>
+      <div id="hud-sector">
+        <span id="sector-display">SECTOR 1 — THE BEGINNING</span>
+      </div>
+      <!-- Ghost delta — hidden until ghost is active -->
+      <div id="ghost-delta" class="ghost-delta"></div>
+      <!-- Voiceover subtitle card -->
+      <div id="voiceover-card" class="voiceover-card hidden"></div>
+      <div id="hud-minimap">
+        <div class="minimap-label">MARINA BAY</div>
+        <canvas id="minimap-canvas" width="400" height="250"></canvas>
+      </div>
+      <div id="hud-speed">
+        <div id="speed-bar-wrap">
+          <div id="speed-bar"></div>
+        </div>
+        <span id="speed-value">0 km/h</span>
+      </div>
+    </div>
+
+
+
+
+    <!-- ===== EXPLORE PANEL ===== -->
+    <div id="explore-panel" class="hidden">
+      <div id="explore-panel-inner">
+        <div id="explore-panel-tag">// HPC DOMAIN</div>
+        <div id="explore-panel-title"></div>
+        <div id="explore-panel-body"></div>
+        <div id="explore-panel-tags"></div>
+        <div id="explore-panel-hint">[ E ] to close</div>
+      </div>
+    </div>
+
+    <!-- ===== READY SCREEN — shown after cinematic ghost lap ===== -->
+    <div id="ready-screen" class="hidden">
+      <div id="ready-inner">
+        <div class="ready-eyebrow">YOUR STORY. YOUR LAP.</div>
+        <h2 id="ready-title">ARE YOU READY?</h2>
+        <div id="ready-lap-time" class="ready-ghost-time"></div>
+        <p class="ready-sub">Race against the ghost — beat the time and write your own chapter.</p>
+        <button id="ready-btn">🏁 LET'S RACE</button>
+      </div>
+    </div>
+
+    <!-- ===== CONTACT SCREEN ===== -->
+    <div id="contact-screen" class="hidden">
+      <div id="contact-inner">
+        <div class="flag-header">🏁 RACE COMPLETE</div>
+        <h2>Let's build something together.</h2>
+        <div id="contact-links">
+          <a href="mailto:kohtzerui@gmail.com" id="contact-email" class="contact-btn">
+            <span class="c-icon">✉</span>
+            <span>kohtzerui@gmail.com</span>
+          </a>
+          <a href="https://github.com/kohtzerui" target="_blank" id="contact-github" class="contact-btn">
+            <span class="c-icon">⌥</span>
+            <span>github.com/kohtzerui</span>
+          </a>
+          <a href="https://linkedin.com/in/kohtzerui" target="_blank" id="contact-linkedin" class="contact-btn">
+            <span class="c-icon">⬡</span>
+            <span>linkedin.com/in/kohtzerui</span>
+          </a>
+        </div>
+        <button id="contact-close">[ DRIVE AGAIN ]</button>
+      </div>
+    </div>
+
+    <!-- ===== START SCREEN ===== -->
+    <div id="start-screen">
+      <div id="start-content">
+        <div class="start-eyebrow">SINGAPORE NIGHT RACE CIRCUIT · PORTFOLIO EDITION</div>
+        <h1 id="start-title">KOH TZE RUI</h1>
+        <div class="start-role">HPC Engineer · Systems Builder · F1 Enthusiast</div>
+        <div class="start-instructions">
+          <span class="kbd">W A S D</span> to drive &nbsp;·&nbsp;
+          <span class="kbd">SPACE</span> hard brake
+        </div>
+        <div class="start-mode-btns">
+          <button id="start-race-btn" class="mode-btn mode-race">🏁 RACE</button>
+          <button id="start-explore-btn" class="mode-btn mode-explore">🔭 EXPLORE</button>
+        </div>
+      </div>
+      <div id="race-lights">
+        <div class="r-light" id="rl-1"></div>
+        <div class="r-light" id="rl-2"></div>
+        <div class="r-light" id="rl-3"></div>
+        <div class="r-light" id="rl-4"></div>
+        <div class="r-light" id="rl-5"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Error overlay — hidden until an error fires -->
+  <div id="error-overlay" style="display:none;position:fixed;inset:0;background:#0a0008;z-index:9999;flex-direction:column;align-items:center;justify-content:center;font-family:monospace;color:#ff4466;padding:40px;">
+    <div style="font-size:12px;letter-spacing:3px;color:#ff4466;margin-bottom:20px;">// RUNTIME ERROR</div>
+    <pre id="error-msg" style="font-size:13px;color:#ffaaaa;max-width:800px;white-space:pre-wrap;line-height:1.8;"></pre>
+    <div style="margin-top:24px;font-size:11px;color:#666;">Open browser DevTools (F12) → Console for full stack trace</div>
+  </div>
+
+  <script>
+    // Catch any uncaught error and show it on screen
+    window.addEventListener('error', function(e) {
+      var overlay = document.getElementById('error-overlay');
+      var msg = document.getElementById('error-msg');
+      if (overlay && msg) {
+        overlay.style.display = 'flex';
+        msg.textContent = (e.message || String(e)) + '\n\nFile: ' + e.filename + '\nLine: ' + e.lineno;
+      }
+    });
+    window.addEventListener('unhandledrejection', function(e) {
+      var overlay = document.getElementById('error-overlay');
+      var msg = document.getElementById('error-msg');
+      if (overlay && msg) {
+        overlay.style.display = 'flex';
+        msg.textContent = 'Unhandled promise rejection:\n' + (e.reason && (e.reason.message || e.reason));
+      }
+    });
+  </script>
+</body>
+</html>

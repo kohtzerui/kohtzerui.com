@@ -8,6 +8,7 @@ import { createExploreObjects, updateExploreObjects } from './three/objects.js';
 import { StorySystem }       from './game/story.js';
 import { HUD }               from './game/hud.js';
 import { GhostRecorder, GhostPlayer } from './game/ghost.js';
+import { CarAudio }          from './game/audio.js';
 import { TRACK_WIDTH }       from './game/circuit.js';
 
 
@@ -21,6 +22,7 @@ const car          = createCar(scene);
 const minimap      = new Minimap('minimap-canvas');
 const story        = new StorySystem(curve);
 const hud          = new HUD();
+const audio        = new CarAudio();
 const exploreObjs  = createExploreObjects(scene);
 const ghostRec     = new GhostRecorder();  // dev-only recorder (?record=1)
 const ghostPlay    = new GhostPlayer(scene);
@@ -253,6 +255,7 @@ const orbitCenter = new THREE.Vector3(-50, 0, -50);
 function launchGame(mode) {
   gameMode = mode;
   startRaceBtn.disabled = startExploreBtn.disabled = true;
+  audio.start();  // must start AudioContext on a user gesture
 
   if (mode === 'explore') {
     startScreen.style.opacity = '0';
@@ -407,6 +410,7 @@ function animate() {
       car.rotateZ(carState.lean);
       updateCamera(delta);
       hud.update(carState.speed, PHY.maxSpeed);
+      audio.update(carState.speed, PHY.maxSpeed, turnInput);
       minimap.draw(car.position);
       currentNearObj = updateExploreObjects(exploreObjs, car.position);
       if (currentNearObj && !explorePanelOpen) {
@@ -415,6 +419,8 @@ function animate() {
       } else if (!currentNearObj && !explorePanelOpen) {
         explorePanel.classList.add('hidden');
       }
+    } else {
+      audio.stop();  // mute while explore panel is open
     }
     composer.render();
     return;
@@ -479,6 +485,7 @@ function animate() {
 
     updateCamera(delta);
     hud.update(carState.speed, PHY.maxSpeed);
+    audio.update(carState.speed, PHY.maxSpeed, turnInput);
     minimap.draw(car.position);
 
     if (gameMode === 'race') {
