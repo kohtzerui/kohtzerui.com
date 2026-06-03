@@ -2,8 +2,8 @@
  * CarAudio — V6 Turbo Hybrid F1 engine synthesiser (Web Audio API).
  *
  * Physics basis: a 4-stroke V6 fires at  RPM/60 × 3  cylinders.
- *   Idle  ~4 000 RPM  →  200 Hz fundamental
- *   Redline ~15 000 RPM  →  750 Hz fundamental
+ *   Idle  ~3 000 RPM  →  150 Hz fundamental
+ *   Cruise ~9 000 RPM  →  450 Hz fundamental  ← kept comfortable for sustained listening
  *
  * Signal chain:
  *
@@ -69,14 +69,14 @@ export class CarAudio {
     this._prevSpeed = speed;
 
     // ── Firing frequency ─────────────────────────────────────────
-    // RPM = 4 000 + 11 000 × speedNorm  →  4 000–15 000 RPM
-    // firing freq = RPM / 60 × 3  →  200–750 Hz
-    const rpm  = 4000 + speedNorm * 11000;
-    const fire = (rpm / 60) * 3;             // 200–750 Hz
+    // RPM = 3 000 + 6 000 × speedNorm  →  3 000–9 000 RPM
+    // firing freq = RPM / 60 × 3  →  150–450 Hz  (comfortable at sustained full throttle)
+    const rpm  = 3000 + speedNorm * 6000;
+    const fire = (rpm / 60) * 3;             // 150–450 Hz
 
     this._engOsc1.frequency.setTargetAtTime(fire,       t, 0.04);
-    this._engOsc2.frequency.setTargetAtTime(fire * 3,   t, 0.04);   // 3rd harmonic: 600–2250 Hz
-    this._engOsc3.frequency.setTargetAtTime(fire * 0.5, t, 0.06);   // sub: 100–375 Hz
+    this._engOsc2.frequency.setTargetAtTime(fire * 1.5, t, 0.04);   // 2nd harmonic: 225–675 Hz (warm, not shrieky)
+    this._engOsc3.frequency.setTargetAtTime(fire * 0.5, t, 0.06);   // sub: 75–225 Hz
 
     // ── Turbo spool ───────────────────────────────────────────────
     // Whine starts at 2 000 Hz (boost-off idle) and climbs to 5 500 Hz at full boost
@@ -89,11 +89,10 @@ export class CarAudio {
     const engVol = 0.04 + speedNorm * 0.24;
     this._engGain.gain.setTargetAtTime(engVol, t, 0.05);
 
-    // ── Bandpass sweep: lock onto 2× firing frequency ─────────────
-    // Brings out the characteristic "scream" register as RPM climbs
-    const bpFreq = Math.min(fire * 2, 3000);
+    // ── Bandpass sweep ────────────────────────────────────────────
+    const bpFreq = Math.min(fire * 2, 1200);   // cap at 1200 Hz — prevents harshness
     this._engBP.frequency.setTargetAtTime(bpFreq, t, 0.07);
-    this._engBP.Q.setTargetAtTime(0.6 + speedNorm * 1.4, t, 0.08);
+    this._engBP.Q.setTargetAtTime(0.5 + speedNorm * 0.8, t, 0.08);  // stays broad, not peaky
 
     // ── Turbo volume ──────────────────────────────────────────────
     // Inaudible below 25% speed, peaks at 100%
@@ -177,26 +176,33 @@ export class CarAudio {
     hp.frequency.value = 80;
     hp.Q.value = 0.5;
 
-    // Presence peak at 1 kHz — the "bite" / attack that makes it cut through
+    // Presence peak at 800 Hz — gentle bite without harshness
     const presence = ctx.createBiquadFilter();
     presence.type = 'peaking';
-    presence.frequency.value = 1000;
-    presence.gain.value = 10;
-    presence.Q.value = 1.5;
+    presence.frequency.value = 800;
+    presence.gain.value = 5;       // was 10 dB — halved
+    presence.Q.value = 1.2;
 
-    // Second presence peak at 3 kHz — adds the screaming upper-mid that
-    // makes F1 sounds distinctive from regular cars
-    const screamer = ctx.createBiquadFilter();
-    screamer.type = 'peaking';
-    screamer.frequency.value = 3000;
-    screamer.gain.value = 7;
-    screamer.Q.value = 2;
+    // High-shelf CUT above 1.5 kHz — tames sustained high-speed harshness
+    const shelf = ctx.createBiquadFilter();
+    shelf.type = 'highshelf';
+    shelf.frequency.value = 1500;
+    shelf.gain.value = -8;         // roll off the top end
+
+    // Dynamics compressor — soft-limits the output so full-throttle
+    // cruise never gets strident; threshold set conservatively
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -18;    // dB
+    comp.knee.value      =  10;
+    comp.ratio.value     =   4;
+    comp.attack.value    = 0.003;
+    comp.release.value   = 0.25;
 
     // Turbo signal path
     this._turboFilter = ctx.createBiquadFilter();
     this._turboFilter.type = 'bandpass';
     this._turboFilter.frequency.value = 2000;
-    this._turboFilter.Q.value = 8;   // narrow = distinctive "whine" tone
+    this._turboFilter.Q.value = 8;
 
     this._turboGain = ctx.createGain();
     this._turboGain.gain.value = 0;
@@ -204,7 +210,7 @@ export class CarAudio {
     this._engGain = ctx.createGain();
     this._engGain.gain.value = 0;
 
-    // Engine path: oscs → mix → shaper → BP → HP → presence → screamer → master
+    // Engine path: oscs → mix → shaper → BP → HP → presence → shelf → comp → master
     this._engOsc1.connect(oscMix);
     this._engOsc2.connect(oscMix);
     this._engOsc3.connect(oscMix);
@@ -212,8 +218,9 @@ export class CarAudio {
     shaper.connect(this._engBP);
     this._engBP.connect(hp);
     hp.connect(presence);
-    presence.connect(screamer);
-    screamer.connect(this._engGain);
+    presence.connect(shelf);
+    shelf.connect(comp);
+    comp.connect(this._engGain);
 
     // Turbo path (parallel, sums into master gain)
     this._turboOsc.connect(this._turboFilter);
