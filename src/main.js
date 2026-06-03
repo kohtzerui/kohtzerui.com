@@ -170,6 +170,7 @@ let lapNumber  = 0;  // 0 = not started, 1 = intro/story lap, 2+ = visitor racin
 // When the finish line is crossed, finalise ghost recording and show result
 window.addEventListener('lap-complete', () => {
   if (gameMode !== 'race') return;
+  audio.stop();  // kill engine/squeal the moment we cross the line
   const lapMs = performance.now() - lapStartMs;
   // Offer ghost download if in record mode
   ghostRec.finish(lapMs);
@@ -190,6 +191,7 @@ window.addEventListener('lap-restart', () => {
   lapElapsed     = 0;
   lapStartMs     = performance.now();
   lapNumber++;
+  audio.update(0, PHY.maxSpeed, 0);  // reset to silent idle so it ramps back up naturally
 
   console.log(`[lap-restart] lap=${lapNumber}, hasGhost=${ghostPlay.hasGhost()}, frames=${ghostPlay.frames.length}`);
 
