@@ -334,6 +334,7 @@ function startRacingLap() {
   carState.lean  = 0;
   turnInput      = 0;
   story.reset();
+  story.setNarration(false);   // voiceover only for the cinematic intro lap
   hud.start();
   ghostRec.start();
   ghostPlay.setOpacity(0.6);   // semi-transparent while racing

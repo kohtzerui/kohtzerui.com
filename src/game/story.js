@@ -28,6 +28,7 @@ export class StorySystem {
 
     this.triggered   = new Set();
     this.contactOpen = false;
+    this._narrateEnabled = true;   // false during player laps — zones still track, no audio/text
 
     // Voiceover subtitle card
     this.voCard = document.getElementById('voiceover-card');
@@ -54,8 +55,10 @@ export class StorySystem {
       const dist = carPos.distanceTo(this.zonePositions[i]);
       if (dist < 18) {
         this.triggered.add(zone.id);
-        this.sectorDisplay.textContent = zone.sector;
-        this._speak(zone.id, zone.text);
+        if (this._narrateEnabled) {
+          this.sectorDisplay.textContent = zone.sector;
+          this._speak(zone.id, zone.text);
+        }
       }
     });
 
@@ -150,6 +153,17 @@ export class StorySystem {
     this.contactScreen.classList.add('hidden');
     this.reset();
     window.dispatchEvent(new CustomEvent('lap-restart'));
+  }
+
+  /** Enable or disable voice-over narration (zone text + TTS/audio).
+   *  Finish-line detection is unaffected and always active.
+   */
+  setNarration(enabled) {
+    this._narrateEnabled = enabled;
+    if (!enabled) {
+      this._stopSpeech();
+      if (this.voCard) this.voCard.classList.add('hidden');
+    }
   }
 
   /** Reset all triggered zones (call at start of each new lap). */
