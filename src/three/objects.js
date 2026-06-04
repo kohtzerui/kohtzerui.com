@@ -13,8 +13,8 @@ import { CIRCUIT_POINTS } from '../game/circuit.js';
  * ExploreObjects — temporarily disabled, rethinking display approach.
  */
 
-const GLOW_RADIUS   = 80;   // start glowing at this distance
-const PANEL_RADIUS  = 45;   // panel slides in at this distance
+const GLOW_RADIUS = 80;   // start glowing at this distance
+const PANEL_RADIUS = 45;   // panel slides in at this distance
 
 // ── HPC_OBJECTS temporarily disabled — rethinking display approach ──
 // export const HPC_OBJECTS = [
@@ -92,50 +92,86 @@ export function updateExploreObjects(interactables, carPos) {
 // Change pos here to move a station; the minimap dot follows automatically.
 export const STATION_CONFIGS = [
   {
-    pos:   new THREE.Vector3(480, 0, -460),  // TEST: inside top-right chicane (near T2/T3)
-    label: 'HPC CLUSTER',
+    pos: new THREE.Vector3(-600, 0, -245),
+    label: 'SBCC26',
+    org: 'SINGLE BOARD CLUSTER COMPETITION 2026',
+    desc: 'BUILT A 17-NODE ORANGE PI MAX CLUSTER FROM SCRATCH.\nWON SBCC\'26 IN COMPETITION DEBUT.\nTEAM KENT RIDGE · NUS COMPUTING',
     panels: [
-      makeAboutCanvas('// PROJECT',   'HPC CLUSTER',  '2023 · NUS', 'COMPETITION'),
-      makeDescCanvas('Built a 12-node SBC cluster\nfrom bare metal to MPI.\nOptimised BLAS, memory\nand job scheduling.',
-                     ['MPI', 'OpenMP', 'BLAS', 'C++', 'Linux']),
-      makeResultCanvas('#3', 'REGIONAL FINALS', 'OPEN  ↗'),
+      makeImageCanvas('/img/SBCC26/sbcc26-win.png'),          // Team Kent Ridge wins poster
+      makeImageCanvas('/img/SBCC26/sbcc26-architecture.png'), // Cluster architecture diagram
+      makeImageCanvas('/img/SBCC26/sbcc26-cluster.png'),      // Physical cluster photo
     ],
-    groundText: 'HPC CLUSTER',
-    groundSub:  '── INTERNATIONAL STUDENT CLUSTER COMPETITION ──',
+  },
+  {
+    pos: new THREE.Vector3(-630, 0, -295),
+    label: 'AI-HPC26',
+    panels: [
+      makeAboutCanvas('', 'HPC COMP', '2026 · NUS · Team Kent Ridge', 'COMPETITION'),
+      makeAboutCanvas('// DETAILS', 'HPC COMP', '', ''),
+    ],
   },
 ];
 
 // ── Auto-orient helper ──────────────────────────────────────────────
-// For a given world position, finds the nearest circuit control point
-// and rotates `group` so its panels face directly toward the track.
+// Rotates `group` so panels run PARALLEL to the track and their screen
+// face points inward toward the road (visible to a passing driver).
+//
+// Uses nearest-SEGMENT projection so orientation is accurate even when
+// the station sits beside a curve (nearest vertex gives the apex
+// tangent which is perpendicular to the road, not parallel).
 function faceTrack(stationPos, group) {
-  let nearestDist = Infinity;
-  let nearestPt   = CIRCUIT_POINTS[0];
+  const n = CIRCUIT_POINTS.length;
 
-  CIRCUIT_POINTS.forEach(pt => {
-    const d = stationPos.distanceToSquared(pt);
-    if (d < nearestDist) { nearestDist = d; nearestPt = pt; }
-  });
+  // 1. Find the closest point on any segment
+  let bestSegIdx = 0, bestT = 0, bestDist = Infinity;
 
-  // Vector from station to nearest track point (XZ only)
-  const dx = nearestPt.x - stationPos.x;
-  const dz = nearestPt.z - stationPos.z;
+  for (let i = 0; i < n; i++) {
+    const a = CIRCUIT_POINTS[i];
+    const b = CIRCUIT_POINTS[(i + 1) % n];
+    const abx = b.x - a.x, abz = b.z - a.z;
+    const apx = stationPos.x - a.x, apz = stationPos.z - a.z;
+    const len2 = abx * abx + abz * abz;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, (apx * abx + apz * abz) / len2)) : 0;
+    const cx = a.x + t * abx, cz = a.z + t * abz;
+    const dx = stationPos.x - cx, dz = stationPos.z - cz;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestDist) { bestDist = d2; bestSegIdx = i; bestT = t; }
+  }
 
-  // Panels face local +X. Rotate group so local +X → track direction.
-  // Three.js rotateY formula: world +X after rotY(theta) = (cos θ, 0, -sin θ)
-  // → theta = atan2(-dz, dx)
-  group.rotation.y = Math.atan2(-dz, dx);
+  // 2. Tangent = direction of that segment
+  const a = CIRCUIT_POINTS[bestSegIdx];
+  const b = CIRCUIT_POINTS[(bestSegIdx + 1) % n];
+  const tx = b.x - a.x, tz = b.z - a.z;
+  const tLen = Math.sqrt(tx * tx + tz * tz);
+  const tnx = tx / tLen, tnz = tz / tLen;
+
+  // 3. Nearest point on that segment (to determine inward direction)
+  const closestX = a.x + bestT * (b.x - a.x);
+  const closestZ = a.z + bestT * (b.z - a.z);
+
+  // 4. Two perpendiculars (90° rotations of tangent)
+  const perpAx = -tnz, perpAz =  tnx;   // CCW
+  const perpBx =  tnz, perpBz = -tnx;   // CW
+
+  // 5. Pick the one that points from station toward road
+  const dx = closestX - stationPos.x, dz = closestZ - stationPos.z;
+  const dot = perpAx * dx + perpAz * dz;
+  const nx = dot >= 0 ? perpAx : perpBx;
+  const nz = dot >= 0 ? perpAz : perpBz;
+
+  // 6. Rotate group so local +X → inward normal (panels parallel to road)
+  group.rotation.y = Math.atan2(-nz, nx);
 }
 
 export function createPortfolioStations(scene) {
   // ── Sizes (world units) ───────────────────────────────────────
   const PANEL_W = 11;
-  const PANEL_H =  5;
-  const POST_H  =  1;
-  const FAN_Z   = 13;   // north-south spread between panels
+  const PANEL_H = 5;
+  const POST_H = 1;
+  const FAN_Z = 13;   // north-south spread between panels
 
   const steelMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, metalness: 0.85, roughness: 0.3 });
-  const backMat  = new THREE.MeshStandardMaterial({ color: 0x06060f, metalness: 0.3, roughness: 0.9 });
+  const backMat = new THREE.MeshStandardMaterial({ color: 0x06060f, metalness: 0.3, roughness: 0.9 });
 
   STATION_CONFIGS.forEach(s => {
     const group = new THREE.Group();
@@ -148,20 +184,12 @@ export function createPortfolioStations(scene) {
     // Spread north-south so the driver sees them in sequence while passing.
     const fanDefs = [
       { z: -FAN_Z, ry: Math.PI / 2 },   // north panel
-      { z:  0,     ry: Math.PI / 2 },   // centre panel
+      { z: 0, ry: Math.PI / 2 },   // centre panel
       { z: +FAN_Z, ry: Math.PI / 2 },   // south panel
     ];
 
     fanDefs.forEach((fd, i) => {
       const pz = fd.z;
-
-      // Post
-      const post = new THREE.Mesh(
-        new THREE.CylinderGeometry(0.12, 0.15, POST_H, 6),
-        steelMat
-      );
-      post.position.set(0, POST_H / 2, pz);
-      group.add(post);
 
       // Backing board (thin box, aligned with each panel's rotation)
       const back = new THREE.Mesh(
@@ -173,39 +201,45 @@ export function createPortfolioStations(scene) {
       group.add(back);
 
       // Screen face
-      const tex  = new THREE.CanvasTexture(s.panels[i]);
+      const panelCanvas = s.panels[i];
+      const tex = new THREE.CanvasTexture(panelCanvas);
       tex.colorSpace = THREE.SRGBColorSpace;
+      // Back-reference so async image loads can trigger needsUpdate
+      if (panelCanvas) panelCanvas._tex = tex;
       const face = new THREE.Mesh(
         new THREE.PlaneGeometry(PANEL_W, PANEL_H),
-        new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+        new THREE.MeshStandardMaterial({
+          map: tex,
+          side: THREE.DoubleSide,
+          roughness: 0.85,
+          metalness: 0.0,
+        })
       );
       face.position.set(0, py, pz);
       face.rotation.y = fd.ry;
       group.add(face);
 
-      // Screen glow
-      const glow = new THREE.PointLight(0x0088ff, 0.3, 25);
+      // Screen glow (subtle — keeps the panel readable without glaring)
+      const glow = new THREE.PointLight(0x8899ff, 0.08, 20);
       glow.position.set(3, py, pz);
       group.add(glow);
     });
 
-    // ── Ground text east of panels (toward track) ─────────────────
-    const gtCv  = makeGroundCanvas(s.groundText, s.groundSub);
-    const gtTex = new THREE.CanvasTexture(gtCv);
-    gtTex.colorSpace = THREE.SRGBColorSpace;
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(40, 10),
-      new THREE.MeshBasicMaterial({ map: gtTex, transparent: true, depthWrite: false })
+    // ── Ground label ──────────────────────────────────────────────
+    // Flat decal on the ground in front of the panels facing the road.
+    // rotation.z = PI/2 makes the text run along the track so it reads
+    // naturally as the driver drives past.
+    const glCv = makeGroundLabelCanvas(s.label, s.org || '', s.desc || '');
+    const glTex = new THREE.CanvasTexture(glCv);
+    glTex.colorSpace = THREE.SRGBColorSpace;
+    const groundLabel = new THREE.Mesh(
+      new THREE.PlaneGeometry(38, 18),
+      new THREE.MeshBasicMaterial({ map: glTex, transparent: true, depthWrite: false })
     );
-    ground.rotation.x = -Math.PI / 2;
-    ground.rotation.z =  Math.PI / 2;
-    ground.position.set(10, 0.18, 0);
-    group.add(ground);
-
-    // ── Locator light ─────────────────────────────────────────────
-    const overhead = new THREE.PointLight(0x00ffcc, 2, 400);
-    overhead.position.set(0, 30, 0);
-    group.add(overhead);
+    groundLabel.rotation.x = -Math.PI / 2;
+    groundLabel.rotation.z = Math.PI / 2;
+    groundLabel.position.set(9, 0.18, 0);   // close to panels, no gap
+    group.add(groundLabel);
 
     scene.add(group);
   });
@@ -213,11 +247,111 @@ export function createPortfolioStations(scene) {
 
 // ── Canvas helpers ─────────────────────────────────────────────────
 
+// Ground label decal — title, org tag, and description block.
+// Inspired by portfolio reference: large name + smaller ALL-CAPS description.
+function makeGroundLabelCanvas(label, org, desc) {
+  const W = 1024, H = 512;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Dark backing pill
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.62)';
+  const pad = 20;
+  ctx.beginPath();
+  ctx.roundRect(pad, pad, W - pad * 2, H - pad * 2, 20);
+  ctx.fill();
+
+  // Cyan top rule
+  ctx.fillStyle = '#00ffcc';
+  ctx.fillRect(pad + 12, pad + 10, W - (pad + 12) * 2, 3);
+
+  // ── Large title ────────────────────────────────────────────────
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 160px Arial, sans-serif';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'top';
+  ctx.fillText(label, pad + 24, pad + 22);
+
+  // ── Org / event tag ────────────────────────────────────────────
+  if (org) {
+    ctx.fillStyle = '#00ffcc';
+    ctx.font = 'bold 36px Arial, sans-serif';
+    ctx.fillText(org, pad + 28, pad + 186);
+  }
+
+  // Divider under org
+  ctx.fillStyle = 'rgba(0,255,204,0.25)';
+  ctx.fillRect(pad + 28, pad + 234, W - (pad + 28) * 2, 2);
+
+  // ── Description lines ──────────────────────────────────────────
+  if (desc) {
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '30px Arial, sans-serif';
+    const lines = desc.split('\n');
+    lines.forEach((line, i) => {
+      ctx.fillText(line, pad + 28, pad + 248 + i * 44);
+    });
+  }
+
+  // Cyan bottom rule
+  ctx.fillStyle = '#00ffcc';
+  ctx.fillRect(pad + 12, H - pad - 14, W - (pad + 12) * 2, 3);
+
+  return cv;
+}
+
+// Load an image onto a billboard panel.
+// Returns the canvas immediately (with a dark placeholder) so Three.js
+// can create the texture; once the image loads it redraws and triggers
+// texture.needsUpdate so it appears without a scene reload.
+export function makeImageCanvas(src) {
+  const W = 512, H = 256;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+
+  // Dark placeholder
+  ctx.fillStyle = '#06060f';
+  ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = '#00ffcc';
+  ctx.fillRect(0, 0, W, 4);   // thin top accent
+  ctx.fillStyle = 'rgba(0,255,204,0.15)';
+  ctx.font = 'bold 18px monospace';
+  ctx.fillText('LOADING…', 20, H / 2 + 7);
+
+  const img = new Image();
+  img.onload = () => {
+    // Contain-fit: show the full image with dark letterbox bars (no cropping)
+    ctx.fillStyle = '#06060f';
+    ctx.fillRect(0, 0, W, H);
+    const scale = Math.min(W / img.naturalWidth, H / img.naturalHeight);
+    const dw = img.naturalWidth * scale;
+    const dh = img.naturalHeight * scale;
+    ctx.drawImage(img, (W - dw) / 2, (H - dh) / 2, dw, dh);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.03)';
+    ctx.fillRect(0, 0, W, H);
+    if (cv._tex) cv._tex.needsUpdate = true;
+  };
+  img.onerror = () => {
+    ctx.fillStyle = '#06060f'; ctx.fillRect(0, 0, W, H);
+    ctx.fillStyle = '#ff4444'; ctx.font = '14px monospace';
+    ctx.fillText('Image not found:', 16, H / 2 - 10);
+    ctx.fillStyle = '#888'; ctx.font = '11px monospace';
+    ctx.fillText(src, 16, H / 2 + 12);
+    if (cv._tex) cv._tex.needsUpdate = true;
+  };
+  img.src = src;
+  return cv;
+}
+
 function panelBase() {
   // 512×256 matches the panel's ~2.2:1 world aspect ratio (11×5 units)
   const W = 512, H = 256;
-  const cv  = document.createElement('canvas');
-  cv.width  = W; cv.height = H;
+  const cv = document.createElement('canvas');
+  cv.width = W; cv.height = H;
   const ctx = cv.getContext('2d');
   ctx.fillStyle = '#06060f';
   ctx.fillRect(0, 0, W, H);
@@ -306,8 +440,8 @@ function makeResultCanvas(big, label, cta) {
 }
 
 function makeGroundCanvas(title, sub) {
-  const cv  = document.createElement('canvas');
-  cv.width  = 1024; cv.height = 256;
+  const cv = document.createElement('canvas');
+  cv.width = 1024; cv.height = 256;
   const ctx = cv.getContext('2d');
   ctx.clearRect(0, 0, 1024, 256);
 
@@ -345,7 +479,7 @@ function makeGroundCanvas(title, sub) {
  *   └──────────────────────────┘
  */
 export function createBillboards(scene) {
-  const loader  = new THREE.TextureLoader();
+  const loader = new THREE.TextureLoader();
   const steelMat = new THREE.MeshStandardMaterial({ color: 0x333344, metalness: 0.8, roughness: 0.3 });
 
   // Main straight billboard — east side, facing the cars
@@ -409,13 +543,13 @@ export function createBillboards(scene) {
  * Positioned over the main straight so it's dramatic during the lap.
  */
 export function createGantry(scene) {
-  const loader    = new THREE.TextureLoader();
-  const steelMat  = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.9, roughness: 0.2 });
-  const plateMat  = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.6, roughness: 0.5 });
+  const loader = new THREE.TextureLoader();
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x222233, metalness: 0.9, roughness: 0.2 });
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0x111122, metalness: 0.6, roughness: 0.5 });
 
   // Gantry over the main straight — high enough for the car to pass under
-  const span    = 68;   // track width + shoulders
-  const height  = 38;   // pillar height
+  const span = 68;   // track width + shoulders
+  const height = 38;   // pillar height
   const bannerH = 14;   // banner panel height
   const bannerW = span - 6;
 

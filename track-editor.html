@@ -2,151 +2,229 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Singapore GP — Track Point Editor</title>
+<title>Station Editor — Portfolio Map</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #04040e; color: #e4e4e8; font-family: 'JetBrains Mono', monospace; display: flex; height: 100vh; overflow: hidden; }
 
+  /* ── Sidebar ─────────────────────────────────────── */
   #sidebar {
-    width: 320px; min-width: 320px;
+    width: 340px; min-width: 340px;
     background: #07070f;
     border-right: 1px solid rgba(0,255,204,0.15);
     display: flex; flex-direction: column;
     overflow: hidden;
   }
-  #sidebar h2 {
+  #sidebar-header {
     padding: 14px 16px;
-    font-size: 11px; letter-spacing: 3px; text-transform: uppercase;
-    color: #00ffcc;
     border-bottom: 1px solid rgba(0,255,204,0.15);
+    flex-shrink: 0;
   }
-  #instructions {
-    padding: 10px 16px;
-    font-size: 10px; color: #666680; line-height: 1.6;
-    border-bottom: 1px solid rgba(0,255,204,0.1);
-  }
-  #instructions b { color: #00ffcc; }
-  #point-list {
-    flex: 1; overflow-y: auto;
-    padding: 8px 0;
-  }
-  .point-row {
-    display: flex; align-items: center; gap: 8px;
-    padding: 4px 12px;
-    cursor: pointer;
-    font-size: 10px;
-    border-left: 3px solid transparent;
-    transition: all 0.1s;
-  }
-  .point-row:hover { background: rgba(0,255,204,0.05); }
-  .point-row.selected { background: rgba(0,255,204,0.1); border-left-color: #00ffcc; }
-  .pt-idx { width: 28px; color: #444466; }
-  .pt-label { flex: 1; color: #888899; font-size: 9px; }
-  .pt-coords { color: #00ddaa; font-size: 9px; }
+  #sidebar-header h2 { font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: #00ffcc; }
+  #sidebar-header p  { font-size: 9px; color: #444466; margin-top: 4px; line-height: 1.5; }
 
-  #edit-panel {
-    padding: 12px 16px;
-    border-top: 1px solid rgba(0,255,204,0.15);
+  /* ── Station list ────────────────────────────────── */
+  #station-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+  .sta-row {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px; cursor: pointer; font-size: 10px;
+    border-left: 3px solid transparent; transition: all 0.1s;
+  }
+  .sta-row:hover { background: rgba(255,255,255,0.04); }
+  .sta-row.selected { background: rgba(255,255,255,0.07); }
+  .sta-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; transform: rotate(45deg); border-radius: 2px; }
+  .sta-name { flex: 1; color: #aaaacc; }
+  .sta-pos  { color: #444466; font-size: 9px; }
+
+  /* ── Station edit panel ──────────────────────────── */
+  #station-edit {
+    flex-shrink: 0; overflow-y: auto; max-height: 60%;
+    padding: 14px 16px;
+    border-top: 1px solid rgba(0,255,204,0.12);
     background: #050510;
   }
-  #edit-panel h3 { font-size: 10px; color: #00ffcc; letter-spacing: 2px; margin-bottom: 10px; }
-  .edit-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-  .edit-row label { font-size: 10px; color: #666680; width: 14px; }
-  .edit-row input[type=range] { flex: 1; accent-color: #00ffcc; }
-  .edit-row input[type=number] {
-    width: 80px; background: #0c0c1e; border: 1px solid rgba(0,255,204,0.3);
-    color: #00ffcc; padding: 4px 6px; font-size: 11px; font-family: inherit;
-    border-radius: 3px; outline: none;
+  #station-edit h3 {
+    font-size: 10px; color: #00ffcc; letter-spacing: 2px;
+    margin-bottom: 12px; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(0,255,204,0.1);
   }
-  .edit-row input[type=number]:focus { border-color: #00ffcc; }
-  #export-btn {
-    width: 100%; margin-top: 10px; padding: 8px;
-    background: rgba(0,255,204,0.1); border: 1px solid #00ffcc;
-    color: #00ffcc; font-family: inherit; font-size: 10px; letter-spacing: 2px;
-    text-transform: uppercase; cursor: pointer; border-radius: 3px;
-    transition: background 0.2s;
-  }
-  #export-btn:hover { background: rgba(0,255,204,0.2); }
 
+  .field { margin-bottom: 9px; }
+  .field label { display: block; font-size: 9px; color: #555577; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 3px; }
+  .field input[type=text], .field input[type=url] {
+    width: 100%; background: #0c0c1e;
+    border: 1px solid rgba(0,255,204,0.2);
+    color: #e4e4e8; padding: 6px 9px;
+    font-size: 10px; font-family: inherit;
+    border-radius: 3px; outline: none;
+    transition: border-color 0.15s;
+  }
+  .field input:focus { border-color: #00ffcc; }
+  .field input::placeholder { color: #2a2a44; }
+
+  .pos-display {
+    font-size: 10px; color: #00ffcc; letter-spacing: 1px;
+    padding: 5px 9px;
+    background: rgba(0,255,204,0.05);
+    border: 1px solid rgba(0,255,204,0.15);
+    border-radius: 3px;
+    cursor: default;
+  }
+
+  /* Colour swatches */
+  .swatch-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .swatch {
+    width: 22px; height: 22px;
+    border-radius: 4px; cursor: pointer;
+    border: 2px solid transparent; transition: all 0.12s;
+  }
+  .swatch:hover  { transform: scale(1.15); }
+  .swatch.active { border-color: #ffffff; transform: scale(1.15); }
+
+  /* Action buttons */
+  .btn-row { display: flex; gap: 7px; margin-top: 10px; }
+  .btn {
+    flex: 1; padding: 8px 4px;
+    border-radius: 3px; cursor: pointer;
+    font-family: inherit; font-size: 9px;
+    letter-spacing: 2px; text-transform: uppercase;
+    transition: background 0.15s; border: 1px solid;
+  }
+  .btn-green { color: #00ffcc; border-color: rgba(0,255,204,0.5); background: rgba(0,255,204,0.07); }
+  .btn-green:hover { background: rgba(0,255,204,0.18); }
+  .btn-yellow { color: #ffdd00; border-color: rgba(255,220,0,0.5); background: rgba(255,220,0,0.06); }
+  .btn-yellow:hover { background: rgba(255,220,0,0.16); }
+  .btn-red { color: #ff6666; border-color: rgba(255,80,80,0.5); background: rgba(255,60,60,0.06); }
+  .btn-red:hover { background: rgba(255,60,60,0.16); }
+  .btn-export {
+    width: 100%; margin-top: 10px; padding: 9px;
+    border-radius: 3px; cursor: pointer;
+    font-family: inherit; font-size: 10px;
+    letter-spacing: 2px; text-transform: uppercase;
+    color: #00ffcc; border: 1px solid #00ffcc;
+    background: rgba(0,255,204,0.08);
+    transition: background 0.15s;
+  }
+  .btn-export:hover { background: rgba(0,255,204,0.2); }
+
+  /* ── Canvas ──────────────────────────────────────── */
   #canvas-wrap { flex: 1; position: relative; overflow: hidden; }
   canvas#track { width: 100%; height: 100%; cursor: crosshair; }
 
   #status {
     position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
     font-size: 9px; color: #444466; letter-spacing: 2px;
-    background: rgba(0,0,0,0.7); padding: 5px 12px; border-radius: 3px;
+    background: rgba(0,0,0,0.75); padding: 5px 14px; border-radius: 3px;
+    pointer-events: none;
+  }
+  #coords-tip {
+    position: absolute; top: 12px; right: 12px;
+    font-size: 9px; color: #333355; letter-spacing: 1px;
+    background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 3px;
     pointer-events: none;
   }
 
+  /* ── Output modal ────────────────────────────────── */
   #output-modal {
     display: none; position: fixed; inset: 0;
-    background: rgba(0,0,0,0.85); z-index: 100;
+    background: rgba(0,0,0,0.87); z-index: 100;
     align-items: center; justify-content: center;
   }
   #output-modal.show { display: flex; }
   #output-box {
     background: #07070f; border: 1px solid #00ffcc;
-    border-radius: 6px; padding: 20px; width: 720px; max-height: 80vh;
+    border-radius: 6px; padding: 20px; width: 780px; max-height: 80vh;
     display: flex; flex-direction: column; gap: 12px;
   }
   #output-box h3 { font-size: 11px; color: #00ffcc; letter-spacing: 3px; }
   #output-text {
     flex: 1; overflow-y: auto; background: #020210;
-    border: 1px solid rgba(0,255,204,0.2); padding: 12px;
-    font-size: 10px; color: #aaffdd; line-height: 1.8;
+    border: 1px solid rgba(0,255,204,0.2); padding: 14px;
+    font-size: 10px; color: #aaffdd; line-height: 1.9;
     white-space: pre; border-radius: 3px;
   }
   .modal-btns { display: flex; gap: 10px; }
   .modal-btns button {
-    flex: 1; padding: 8px; background: rgba(0,255,204,0.1);
+    flex: 1; padding: 9px; background: rgba(0,255,204,0.1);
     border: 1px solid #00ffcc; color: #00ffcc; font-family: inherit;
     font-size: 10px; letter-spacing: 2px; text-transform: uppercase;
     cursor: pointer; border-radius: 3px;
   }
-  .modal-btns button:hover { background: rgba(0,255,204,0.2); }
+  .modal-btns button:hover { background: rgba(0,255,204,0.22); }
 </style>
 </head>
 <body>
 
+<!-- ── Sidebar ──────────────────────────────────────────── -->
 <div id="sidebar">
-  <h2>🏎 Track Editor</h2>
-  <div id="instructions">
-    <b>Click</b> a point on the canvas or in the list to select it.<br>
-    <b>Drag</b> a selected point to reposition it.<br>
-    <b>Export</b> to copy the updated circuit.js code.<br><br>
-    Coordinate system: <b>X</b> = east (right), <b>Z</b> = south (down).<br>
-    Negative Z = north (top of map).
-  </div>
-  <div id="point-list"></div>
-  <div id="edit-panel">
-    <h3>SELECTED POINT</h3>
-    <div class="edit-row">
-      <label>X</label>
-      <input type="number" id="inp-x" step="5">
-    </div>
-    <div class="edit-row">
-      <label>Z</label>
-      <input type="number" id="inp-z" step="5">
-    </div>
-    <button id="export-btn">⬇ Export circuit.js code</button>
+  <div id="sidebar-header">
+    <h2>🏎 Station Editor</h2>
+    <p>Drag a ◆ pin to position it on the track map.<br>
+       Edit content below, then export to objects.js.</p>
   </div>
 
-  <!-- HPC object coordinate readout -->
-  <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:4px;font-family:monospace;font-size:10px">
-    <div style="color:rgba(255,255,255,0.4);letter-spacing:2px;margin-bottom:10px">// HPC OBJECT PINS</div>
-    <div style="color:rgba(255,255,255,0.5);font-size:9px;margin-bottom:8px">Drag a dot to position it.<br>Paste the coords into <b style="color:#00ffcc">STATION_CONFIGS</b> in objects.js.</div>
-    <div id="obj-readout"></div>
+  <div id="station-list"></div>
+
+  <div id="station-edit">
+    <h3 id="edit-heading">STATION 1</h3>
+
+    <div class="field">
+      <label>World position (drag pin on map)</label>
+      <div class="pos-display" id="pos-display">—</div>
+    </div>
+
+    <div class="field">
+      <label>Label (shown on minimap)</label>
+      <input type="text" id="f-label" placeholder="e.g. HPC CLUSTER">
+    </div>
+
+    <div class="field">
+      <label>Tag line</label>
+      <input type="text" id="f-tag" placeholder="// PROJECT">
+    </div>
+    <div class="field">
+      <label>Title</label>
+      <input type="text" id="f-title" placeholder="e.g. HPC CLUSTER">
+    </div>
+    <div class="field">
+      <label>Org / Year</label>
+      <input type="text" id="f-org" placeholder="2023 · NUS">
+    </div>
+    <div class="field">
+      <label>Type badge</label>
+      <input type="text" id="f-type" placeholder="COMPETITION">
+    </div>
+    <div class="field">
+      <label>Photo path (optional, relative to /public)</label>
+      <input type="url" id="f-photo" placeholder="/img/my-photo.jpg">
+    </div>
+
+    <div class="field">
+      <label>Colour</label>
+      <div class="swatch-row" id="swatches"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-green"  id="btn-add">+ New</button>
+      <button class="btn btn-yellow" id="btn-dup">⧉ Duplicate</button>
+      <button class="btn btn-red"    id="btn-del">✕ Delete</button>
+    </div>
+
+    <button class="btn-export" id="btn-export">⬇ Copy STATION_CONFIGS code</button>
   </div>
 </div>
 
+<!-- ── Canvas ───────────────────────────────────────────── -->
 <div id="canvas-wrap">
   <canvas id="track"></canvas>
-  <div id="status">click a point to select • drag to move</div>
+  <div id="status">drag a ◆ pin to reposition • select to edit</div>
+  <div id="coords-tip">hover for world coords</div>
 </div>
 
+<!-- ── Output modal ─────────────────────────────────────── -->
 <div id="output-modal">
   <div id="output-box">
-    <h3>📋 COPY INTO src/game/circuit.js</h3>
+    <h3>📋 PASTE INTO src/three/objects.js → STATION_CONFIGS</h3>
     <div id="output-text"></div>
     <div class="modal-btns">
       <button onclick="navigator.clipboard.writeText(document.getElementById('output-text').textContent).then(()=>this.textContent='✓ Copied!')">Copy to clipboard</button>
@@ -156,413 +234,262 @@
 </div>
 
 <script>
-const pts = [
-  { x:  615, z:   10, label: '0 START/FINISH',    sharp: true  },
-  { x:  590, z: -460, label: '1 T2 apex',          sharp: false },
-  { x:  505, z: -495, label: '2 T3 apex',          sharp: false },
-  { x:  445, z: -525, label: '3 T3 mid-exit',      sharp: false },
-  { x:  420, z: -430, label: '4',                  sharp: false },
-  { x:  450, z: -145, label: '5',                  sharp: false },
-  { x: -100, z: -235, label: '6 T6 exit',          sharp: false },
-  { x: -410, z: -375, label: '7 T7 exit',          sharp: false },
-  { x: -505, z: -210, label: '8 T8 apex',          sharp: true  },
-  { x: -550, z: -240, label: '9',                  sharp: false },
-  { x: -645, z: -385, label: '10 T9 mid',          sharp: false },
-  { x: -700, z: -410, label: '11 T9 apex',         sharp: false },
-  { x: -775, z: -265, label: '12',                 sharp: false },
-  { x: -850, z:  -75, label: '13 T10 apex',        sharp: false },
-  { x: -750, z:    5, label: '14 T10 exit',        sharp: false },
-  { x: -735, z:   70, label: '15 T11',             sharp: false },
-  { x: -615, z:  175, label: '16 T12',             sharp: false },
-  { x: -565, z:  200, label: '17',                 sharp: false },
-  { x: -545, z:  165, label: '18',                 sharp: false },
-  { x: -545, z:   15, label: '19',                 sharp: false },
-  { x: -490, z: -135, label: '20 T14 approach',   sharp: false },
-  { x: -345, z:   10, label: '21 T14 exit',        sharp: false },
-  { x:   90, z:   20, label: '22',                 sharp: false },
-  { x:  150, z:  125, label: '23',                 sharp: false },
-  { x:  535, z:  115, label: '24 T18',             sharp: false },
+// ── Hardcoded circuit shape (read-only reference) ──────────────────
+const PTS = [
+  { x:  615, z:   10 }, { x:  590, z: -460 }, { x:  505, z: -495 },
+  { x:  445, z: -525 }, { x:  420, z: -430 }, { x:  450, z: -145 },
+  { x: -100, z: -235 }, { x: -410, z: -375 }, { x: -505, z: -210 },
+  { x: -550, z: -240 }, { x: -645, z: -385 }, { x: -700, z: -410 },
+  { x: -775, z: -265 }, { x: -850, z:  -75 }, { x: -750, z:    5 },
+  { x: -735, z:   70 }, { x: -615, z:  175 }, { x: -565, z:  200 },
+  { x: -545, z:  165 }, { x: -545, z:   15 }, { x: -490, z: -135 },
+  { x: -345, z:   10 }, { x:   90, z:   20 }, { x:  150, z:  125 },
+  { x:  535, z:  115 },
 ];
 
+// ── Station data — keep in sync with STATION_CONFIGS in objects.js ──
+let stations = [
+  {
+    id: 's1', label: 'SBCC26',
+    x: -600, z: -245, color: '#ffdd00',
+    tag: '', title: 'HPC COMP', org: '2026 · NUS · Team Kent Ridge', type: 'COMPETITION', photo: '',
+  },
+  {
+    id: 's2', label: 'AI-HPC26',
+    x: -630, z: -295, color: '#66aaff',
+    tag: '', title: 'HPC COMP', org: '2026 · NUS · Team Kent Ridge', type: 'COMPETITION', photo: '',
+  },
+];
 
-// ── Canvas setup ────────────────────────────────────────────────────
+const COLORS = ['#ffdd00','#ff6655','#66aaff','#66ffaa','#ff9933','#cc88ff','#00ffcc','#ff88cc','#ffffff'];
+
+let selectedIdx   = 0;
+let draggingIdx   = null;
+
+// ── Canvas ─────────────────────────────────────────────────────────
 const canvas = document.getElementById('track');
 const ctx    = canvas.getContext('2d');
 
-let selectedIdx = -1;
-let dragging    = false;
-let dragStart   = null;
-
 function resize() {
-  const wrap = canvas.parentElement;
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight;
+  const w = canvas.parentElement;
+  canvas.width  = w.clientWidth;
+  canvas.height = w.clientHeight;
   draw();
 }
 window.addEventListener('resize', resize);
 
-// ── Portfolio station pins — keep in sync with STATION_CONFIGS in objects.js ──
-// Drag a dot to find the right infield position, then paste the coords below.
-const hpcObjs = [
-  { id: 'hpc1', label: '1 HPC CLUSTER', x:  530, z: -100, color: '#ffdd00' },
-  // Add more entries here for each project, e.g.:
-  // { id: 'proj2', label: '2 MY PROJ', x: 0, z: 0, color: '#ff88cc' },
-];
-
-
-let draggingObj = null;   // index into hpcObjs while actively dragging
-let selectedObj = null;   // index into hpcObjs — persists after mouseup
-
-// ── World → canvas transform ────────────────────────────────────────
 function getTransform() {
-  const PAD = 50;
-  const W   = canvas.width - PAD * 2;
-  const H   = canvas.height - PAD * 2;
-  // Include HPC object positions in bounding box so they're visible
-  const allX = [...pts.map(p => p.x), ...hpcObjs.map(o => o.x)];
-  const allZ = [...pts.map(p => p.z), ...hpcObjs.map(o => o.z)];
-  const minX = Math.min(...allX) - 80;
-  const maxX = Math.max(...allX) + 80;
-  const minZ = Math.min(...allZ) - 80;
-  const maxZ = Math.max(...allZ) + 80;
-  const scaleX = W / (maxX - minX);
-  const scaleZ = H / (maxZ - minZ);
-  const scale  = Math.min(scaleX, scaleZ);
-  const offX   = PAD + (W - (maxX - minX) * scale) / 2;
-  const offZ   = PAD + (H - (maxZ - minZ) * scale) / 2;
+  const PAD = 60, W = canvas.width-PAD*2, H = canvas.height-PAD*2;
+  const allX = [...PTS.map(p=>p.x), ...stations.map(s=>s.x)];
+  const allZ = [...PTS.map(p=>p.z), ...stations.map(s=>s.z)];
+  const minX=Math.min(...allX)-80, maxX=Math.max(...allX)+80;
+  const minZ=Math.min(...allZ)-80, maxZ=Math.max(...allZ)+80;
+  const scale = Math.min(W/(maxX-minX), H/(maxZ-minZ));
+  const offX = PAD + (W-(maxX-minX)*scale)/2;
+  const offZ = PAD + (H-(maxZ-minZ)*scale)/2;
   return { minX, minZ, scale, offX, offZ };
 }
+const w2c = (x,z) => { const t=getTransform(); return { cx: t.offX+(x-t.minX)*t.scale, cy: t.offZ+(z-t.minZ)*t.scale }; };
+const c2w = (cx,cy) => { const t=getTransform(); return { x:(cx-t.offX)/t.scale+t.minX, z:(cy-t.offZ)/t.scale+t.minZ }; };
 
-function worldToCanvas(x, z) {
-  const { minX, minZ, scale, offX, offZ } = getTransform();
-  return { cx: offX + (x - minX) * scale, cy: offZ + (z - minZ) * scale };
-}
-
-function canvasToWorld(cx, cy) {
-  const { minX, minZ, scale, offX, offZ } = getTransform();
-  return { x: (cx - offX) / scale + minX, z: (cy - offZ) / scale + minZ };
-}
-
-// ── Catmull-Rom spline ──────────────────────────────────────────────
-function catmullRomPoint(p0, p1, p2, p3, t, tension=0.12) {
-  const t2 = t * t, t3 = t2 * t;
-  const s  = (1 - tension) / 2;
+function crPt(p0,p1,p2,p3,t) {
+  const s=0.44, t2=t*t, t3=t2*t;
   return {
-    x: s*(-p0.x+3*p1.x-3*p2.x+p3.x)*t3 + s*(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2 + s*(-p0.x+p2.x)*t + p1.x,
-    z: s*(-p0.z+3*p1.z-3*p2.z+p3.z)*t3 + s*(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2 + s*(-p0.z+p2.z)*t + p1.z,
+    x: s*(-p0.x+3*p1.x-3*p2.x+p3.x)*t3+s*(2*p0.x-5*p1.x+4*p2.x-p3.x)*t2+s*(-p0.x+p2.x)*t+p1.x,
+    z: s*(-p0.z+3*p1.z-3*p2.z+p3.z)*t3+s*(2*p0.z-5*p1.z+4*p2.z-p3.z)*t2+s*(-p0.z+p2.z)*t+p1.z,
   };
 }
 
-// ── Draw ────────────────────────────────────────────────────────────
 function draw() {
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
 
-  // Background grid
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-  ctx.lineWidth = 1;
-  for (let x = 0; x < W; x += 40) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke(); }
-  for (let y = 0; y < H; y += 40) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+  // Grid
+  ctx.strokeStyle='rgba(255,255,255,0.025)'; ctx.lineWidth=1;
+  for (let x=0;x<W;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+  for (let y=0;y<H;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
 
-  // Spline path (smooth)
-  const STEPS = 8;
-  const n = pts.length;
-  ctx.beginPath();
-  let first = true;
-  for (let i = 0; i < n; i++) {
-    const p0 = pts[(i - 1 + n) % n];
-    const p1 = pts[i];
-    const p2 = pts[(i + 1) % n];
-    const p3 = pts[(i + 2) % n];
-    for (let s = 0; s < STEPS; s++) {
-      const pt = catmullRomPoint(p0, p1, p2, p3, s / STEPS);
-      const { cx, cy } = worldToCanvas(pt.x, pt.z);
-      first ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
-      first = false;
+  // Track spline
+  const n=PTS.length;
+  ctx.beginPath(); let first=true;
+  for (let i=0;i<n;i++) {
+    const p0=PTS[(i-1+n)%n],p1=PTS[i],p2=PTS[(i+1)%n],p3=PTS[(i+2)%n];
+    for (let s=0;s<10;s++) {
+      const p=crPt(p0,p1,p2,p3,s/10);
+      const {cx,cy}=w2c(p.x,p.z);
+      first?ctx.moveTo(cx,cy):ctx.lineTo(cx,cy); first=false;
     }
   }
-  const start = worldToCanvas(pts[0].x, pts[0].z);
-  ctx.lineTo(start.cx, start.cy);
+  const s0=w2c(PTS[0].x,PTS[0].z); ctx.lineTo(s0.cx,s0.cy);
+  ctx.strokeStyle='rgba(0,255,204,0.15)'; ctx.lineWidth=getTransform().scale*22; ctx.stroke();
+  ctx.strokeStyle='rgba(0,255,204,0.6)';  ctx.lineWidth=1.5; ctx.stroke();
 
-  // Track width indicator
-  ctx.strokeStyle = 'rgba(0,255,204,0.18)';
-  ctx.lineWidth   = getTransform().scale * 22; // 22 units wide
-  ctx.stroke();
+  // Start arrow
+  const a0=w2c(PTS[0].x,PTS[0].z), a1=w2c(PTS[1].x,PTS[1].z);
+  const ang=Math.atan2(a1.cy-a0.cy, a1.cx-a0.cx);
+  ctx.save(); ctx.translate(a0.cx,a0.cy); ctx.rotate(ang);
+  ctx.fillStyle='#ff7b00'; ctx.beginPath();
+  ctx.moveTo(14,0);ctx.lineTo(-5,6);ctx.lineTo(-5,-6);ctx.closePath();ctx.fill();
+  ctx.restore();
 
-  // Center line
-  ctx.strokeStyle = 'rgba(0,255,204,0.7)';
-  ctx.lineWidth   = 1.5;
-  ctx.stroke();
+  // Station pins
+  stations.forEach((sta, i) => {
+    const {cx,cy} = w2c(sta.x, sta.z);
+    const sel  = (i === selectedIdx);
+    const drag = (i === draggingIdx);
+    const r = sel||drag ? 9 : 6;
 
-  // Control point connections
-  ctx.strokeStyle = 'rgba(0,255,204,0.12)';
-  ctx.lineWidth   = 1;
-  ctx.setLineDash([3, 5]);
-  ctx.beginPath();
-  pts.forEach((p, i) => {
-    const { cx, cy } = worldToCanvas(p.x, p.z);
-    i === 0 ? ctx.moveTo(cx, cy) : ctx.lineTo(cx, cy);
-  });
-  ctx.closePath();
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Control points
-  pts.forEach((p, i) => {
-    const { cx, cy } = worldToCanvas(p.x, p.z);
-    const sel = i === selectedIdx;
-
-    if (sel) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, 11, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(0,255,204,0.2)';
-      ctx.fill();
-    }
-
-    // Draw point — diamond for sharp, circle for smooth
-    ctx.beginPath();
-    if (p.sharp) {
-      // Diamond shape = sharp corner indicator
-      const r = sel ? 7 : 5;
-      ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy);
-      ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy);
-      ctx.closePath();
-      ctx.fillStyle = sel ? '#ffdd00' : 'rgba(255,200,0,0.85)';
-    } else {
-      ctx.arc(cx, cy, sel ? 5.5 : 3.5, 0, Math.PI * 2);
-      ctx.fillStyle = sel ? '#00ffcc' : (i === 0 ? '#ff7b00' : 'rgba(0,255,204,0.7)');
-    }
-    ctx.fill();
-    ctx.strokeStyle = sel ? '#ffffff' : (p.sharp ? 'rgba(255,200,0,0.5)' : 'rgba(0,255,204,0.3)');
-    ctx.lineWidth   = sel ? 1.5 : 1;
-    ctx.stroke();
-
-    // Label only for selected or important points
-    if (sel || i === 0 || p.sharp || p.label.includes('apex') || p.label.includes('START')) {
-      ctx.fillStyle  = sel ? '#ffffff' : (p.sharp ? '#ffdd00' : '#00ffcc');
-      ctx.font       = `${sel ? 10 : 8}px monospace`;
-      ctx.fillText((p.sharp ? '⬥ ' : '') + p.label, cx + 8, cy - 6);
-    }
-  });
-
-  // ── HPC object pins ────────────────────────────────────────────
-  hpcObjs.forEach((obj, i) => {
-    const { cx, cy } = worldToCanvas(obj.x, obj.z);
-    const active = (selectedObj === i);   // clicked/dragging
-    const r = active ? 8 : 5;
-
-    if (active) {
-      // Outer glow ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, r + 9, 0, Math.PI * 2);
-      ctx.fillStyle = obj.color + '44';
-      ctx.fill();
-
-      // Mid glow ring
-      ctx.beginPath();
-      ctx.arc(cx, cy, r + 4, 0, Math.PI * 2);
-      ctx.fillStyle = obj.color + '66';
-      ctx.fill();
-
-      // Crosshair lines
-      ctx.strokeStyle = obj.color + 'aa';
-      ctx.lineWidth   = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.beginPath(); ctx.moveTo(cx - 20, cy); ctx.lineTo(cx + 20, cy); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx, cy - 20); ctx.lineTo(cx, cy + 20); ctx.stroke();
+    // Glow rings for active pin
+    if (sel||drag) {
+      [r+14, r+7].forEach((gr, gi) => {
+        ctx.beginPath(); ctx.arc(cx,cy,gr,0,Math.PI*2);
+        ctx.fillStyle = sta.color + (gi===0?'22':'44'); ctx.fill();
+      });
+      ctx.strokeStyle=sta.color+'88'; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(cx-28,cy); ctx.lineTo(cx+28,cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx,cy-28); ctx.lineTo(cx,cy+28); ctx.stroke();
       ctx.setLineDash([]);
     }
 
-    // Circle
+    // Diamond pin
     ctx.beginPath();
-    ctx.arc(cx, cy, r, 0, Math.PI * 2);
-    ctx.fillStyle   = obj.color;
-    ctx.strokeStyle = active ? '#ffffff' : 'rgba(255,255,255,0.5)';
-    ctx.lineWidth   = active ? 2 : 1;
-    ctx.fill();
-    ctx.stroke();
+    ctx.moveTo(cx,cy-r); ctx.lineTo(cx+r,cy); ctx.lineTo(cx,cy+r); ctx.lineTo(cx-r,cy); ctx.closePath();
+    ctx.fillStyle   = sta.color;
+    ctx.strokeStyle = sel||drag ? '#ffffff' : sta.color+'66';
+    ctx.lineWidth   = sel||drag ? 2 : 1;
+    ctx.fill(); ctx.stroke();
 
     // Label
-    ctx.fillStyle = active ? '#ffffff' : obj.color;
-    ctx.font      = active ? 'bold 9px monospace' : '8px monospace';
-    ctx.fillText(obj.label + ' (' + Math.round(obj.x) + ', ' + Math.round(obj.z) + ')', cx + r + 5, cy + 3);
+    ctx.fillStyle = sel||drag ? '#ffffff' : sta.color+'cc';
+    ctx.font      = `${sel||drag?'bold ':''  }9px monospace`;
+    ctx.fillText(`${i+1}. ${sta.label}  (${Math.round(sta.x)}, ${Math.round(sta.z)})`, cx+r+7, cy+3);
   });
-
-
-  // Direction arrow at start
-  const s0 = worldToCanvas(pts[0].x, pts[0].z);
-  const s1 = worldToCanvas(pts[1].x, pts[1].z);
-  const ang = Math.atan2(s1.cy - s0.cy, s1.cx - s0.cx);
-  ctx.save();
-  ctx.translate(s0.cx, s0.cy);
-  ctx.rotate(ang);
-  ctx.fillStyle = '#ff7b00';
-  ctx.beginPath();
-  ctx.moveTo(12, 0); ctx.lineTo(-4, 5); ctx.lineTo(-4, -5);
-  ctx.closePath(); ctx.fill();
-  ctx.restore();
 }
 
-// ── Sidebar list ────────────────────────────────────────────────────
+// ── Station list ────────────────────────────────────────────────────
 function buildList() {
-  const list = document.getElementById('point-list');
-  list.innerHTML = '';
-  pts.forEach((p, i) => {
+  const el = document.getElementById('station-list');
+  el.innerHTML = '';
+  stations.forEach((sta, i) => {
     const row = document.createElement('div');
-    row.className = 'point-row' + (i === selectedIdx ? ' selected' : '');
-    const sharpBadge = p.sharp ? `<span style="color:#ffdd00;font-size:9px;margin-left:4px">⬥SHARP</span>` : '';
-    row.innerHTML = `<span class="pt-idx">${i}</span><span class="pt-label">${p.label}${sharpBadge}</span><span class="pt-coords">(${Math.round(p.x)}, ${Math.round(p.z)})</span>`;
-    row.onclick = () => select(i);
-    list.appendChild(row);
+    row.className = 'sta-row'+(i===selectedIdx?' selected':'');
+    row.style.borderLeftColor = i===selectedIdx ? sta.color : 'transparent';
+    row.innerHTML = `
+      <div class="sta-dot" style="background:${sta.color}"></div>
+      <span class="sta-name">${i+1}. ${sta.label}</span>
+      <span class="sta-pos">(${Math.round(sta.x)}, ${Math.round(sta.z)})</span>`;
+    row.onclick = () => { selectedIdx=i; refresh(); };
+    el.appendChild(row);
   });
 }
 
-function select(i) {
-  selectedIdx = i;
-  buildList();
-  draw();
-  if (i >= 0) {
-    document.getElementById('inp-x').value = Math.round(pts[i].x);
-    document.getElementById('inp-z').value = Math.round(pts[i].z);
-    document.querySelector(`#point-list .point-row:nth-child(${i+1})`)?.scrollIntoView({ block: 'nearest' });
-  }
+function updateEditPanel() {
+  const sta = stations[selectedIdx]; if (!sta) return;
+  document.getElementById('edit-heading').textContent = `STATION ${selectedIdx+1}`;
+  document.getElementById('pos-display').textContent  = `new THREE.Vector3(${Math.round(sta.x)}, 0, ${Math.round(sta.z)})`;
+  document.getElementById('f-label').value = sta.label || '';
+  document.getElementById('f-tag').value   = sta.tag   || '';
+  document.getElementById('f-title').value = sta.title || '';
+  document.getElementById('f-org').value   = sta.org   || '';
+  document.getElementById('f-type').value  = sta.type  || '';
+  document.getElementById('f-photo').value = sta.photo || '';
+  document.querySelectorAll('.swatch').forEach(sw =>
+    sw.classList.toggle('active', sw.dataset.color===sta.color));
 }
 
-document.getElementById('inp-x').addEventListener('input', e => {
-  if (selectedIdx < 0) return;
-  pts[selectedIdx].x = parseFloat(e.target.value) || 0;
-  buildList(); draw();
-});
-document.getElementById('inp-z').addEventListener('input', e => {
-  if (selectedIdx < 0) return;
-  pts[selectedIdx].z = parseFloat(e.target.value) || 0;
-  buildList(); draw();
+function refresh() { buildList(); updateEditPanel(); draw(); }
+
+// Live field binding
+[['f-label','label'],['f-tag','tag'],['f-title','title'],['f-org','org'],['f-type','type'],['f-photo','photo']].forEach(([id,key]) => {
+  document.getElementById(id).addEventListener('input', e => {
+    const sta=stations[selectedIdx]; if(!sta)return;
+    sta[key]=e.target.value;
+    if(key==='label'){buildList();}
+    draw();
+  });
 });
 
-// ── Mouse interaction ───────────────────────────────────────────────────
+// Colour swatches
+function buildSwatches() {
+  const el=document.getElementById('swatches');
+  COLORS.forEach(col => {
+    const sw=document.createElement('div');
+    sw.className='swatch'; sw.style.background=col; sw.dataset.color=col; sw.title=col;
+    sw.onclick = () => {
+      stations[selectedIdx].color=col;
+      document.querySelectorAll('.swatch').forEach(s=>s.classList.toggle('active',s.dataset.color===col));
+      buildList(); draw();
+    };
+    el.appendChild(sw);
+  });
+}
+
+// ── CRUD ────────────────────────────────────────────────────────────
+document.getElementById('btn-add').onclick = () => {
+  stations.push({ id:'s'+Date.now(), label:'NEW STATION', x:0, z:0, color:'#66aaff',
+    tag:'// PROJECT', title:'NEW STATION', org:'', type:'', photo:'' });
+  selectedIdx=stations.length-1; refresh();
+};
+
+document.getElementById('btn-dup').onclick = () => {
+  const src=stations[selectedIdx]; if(!src)return;
+  const clone=Object.assign({},src,{id:'s'+Date.now(), x:src.x+40, z:src.z+40, label:src.label+' (copy)'});
+  stations.splice(selectedIdx+1,0,clone);
+  selectedIdx=selectedIdx+1; refresh();
+};
+
+document.getElementById('btn-del').onclick = () => {
+  if(stations.length<=1){alert('Need at least 1 station');return;}
+  stations.splice(selectedIdx,1);
+  selectedIdx=Math.min(selectedIdx,stations.length-1);
+  refresh();
+};
+
+// ── Export ──────────────────────────────────────────────────────────
+document.getElementById('btn-export').onclick = () => {
+  const q = s => `'${s}'`;
+  const entries = stations.map((sta,i) => {
+    let panels = `      makeAboutCanvas(${q(sta.tag)}, ${q(sta.title)}, ${q(sta.org)}, ${q(sta.type)})`;
+    if (sta.photo) panels += `,\n      makeImageCanvas(${q(sta.photo)})`;
+    panels += `,\n      makeAboutCanvas('// DETAILS', ${q(sta.title)}, '', '')`;
+    return `  {\n    pos:   new THREE.Vector3(${Math.round(sta.x)}, 0, ${Math.round(sta.z)}),\n    label: ${q(sta.label)},\n    panels: [\n${panels},\n    ],\n  }`;
+  }).join(',\n');
+  document.getElementById('output-text').textContent =
+    `// ── Paste this into src/three/objects.js ─────────────────\nexport const STATION_CONFIGS = [\n${entries},\n];`;
+  document.getElementById('output-modal').classList.add('show');
+};
+
+// ── Mouse ────────────────────────────────────────────────────────────
 canvas.addEventListener('mousedown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-
-  // Check HPC pins — fixed 20px screen-space hit radius
-  let nearHpc = -1, nearHpcDist = 20 ** 2;
-  hpcObjs.forEach((obj, i) => {
-    const { cx, cy } = worldToCanvas(obj.x, obj.z);
-    const d = (cx - mx) ** 2 + (cy - my) ** 2;
-    if (d < nearHpcDist) { nearHpcDist = d; nearHpc = i; }
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  let nearest=-1, bestD=22**2;
+  stations.forEach((sta,i) => {
+    const {cx,cy}=w2c(sta.x,sta.z);
+    const d=(cx-mx)**2+(cy-my)**2;
+    if(d<bestD){bestD=d;nearest=i;}
   });
-  if (nearHpc >= 0) { draggingObj = nearHpc; selectedObj = nearHpc; draw(); return; }
-
-  // Find nearest circuit point
-  let nearest = -1, nearDist = 14 ** 2;
-  pts.forEach((p, i) => {
-    const { cx, cy } = worldToCanvas(p.x, p.z);
-    const d = (cx - mx) ** 2 + (cy - my) ** 2;
-    if (d < nearDist) { nearDist = d; nearest = i; }
-  });
-  if (nearest >= 0) { select(nearest); dragging = true; dragStart = { mx, my }; }
+  if(nearest>=0){ draggingIdx=nearest; selectedIdx=nearest; refresh(); }
 });
 
 canvas.addEventListener('mousemove', e => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-  const w = canvasToWorld(mx, my);
-
-  if (draggingObj !== null) {
-    // Update data only — no redraw during drag (fires on mouseup)
-    hpcObjs[draggingObj].x = Math.round(w.x / 5) * 5;
-    hpcObjs[draggingObj].z = Math.round(w.z / 5) * 5;
-    updateObjReadout();
-    return;
-  }
-
-  if (!dragging || selectedIdx < 0) return;
-  pts[selectedIdx].x = Math.round(w.x / 5) * 5;
-  pts[selectedIdx].z = Math.round(w.z / 5) * 5;
-  document.getElementById('inp-x').value = pts[selectedIdx].x;
-  document.getElementById('inp-z').value = pts[selectedIdx].z;
-  buildList(); draw();
+  const rect=canvas.getBoundingClientRect();
+  const mx=e.clientX-rect.left, my=e.clientY-rect.top;
+  const {x,z}=c2w(mx,my);
+  document.getElementById('coords-tip').textContent = `x: ${Math.round(x)}  z: ${Math.round(z)}`;
+  if(draggingIdx===null)return;
+  stations[draggingIdx].x=Math.round(x/5)*5;
+  stations[draggingIdx].z=Math.round(z/5)*5;
+  updateEditPanel(); buildList(); draw();
 });
 
-canvas.addEventListener('mouseup',    () => { dragging = false; draggingObj = null; draw(); });
-canvas.addEventListener('mouseleave', () => { dragging = false; draggingObj = null; draw(); });
+canvas.addEventListener('mouseup',    () => { draggingIdx=null; draw(); });
+canvas.addEventListener('mouseleave', () => { draggingIdx=null; draw(); });
 
-
-
-
-// ── Delete selected point ────────────────────────────────────────────
-document.getElementById('export-btn').insertAdjacentHTML('beforebegin', `
-  <div style="display:flex;gap:8px;margin-bottom:8px">
-    <button id="del-btn" style="flex:1;padding:8px;background:rgba(255,60,60,0.1);border:1px solid rgba(255,60,60,0.6);color:#ff6666;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">✕ Delete point</button>
-    <button id="add-btn" style="flex:1;padding:8px;background:rgba(0,255,204,0.06);border:1px solid rgba(0,255,204,0.4);color:#00ffcc;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">+ Add after</button>
-  </div>
-`);
-
-document.getElementById('del-btn').addEventListener('click', () => {
-  if (selectedIdx < 0) return;
-  if (pts.length <= 3) { alert('Need at least 3 points'); return; }
-  pts.splice(selectedIdx, 1);
-  // Re-number labels that start with a digit
-  pts.forEach((p, i) => { if (/^\d/.test(p.label)) p.label = String(i) + p.label.replace(/^\d+/, ''); });
-  selectedIdx = Math.min(selectedIdx, pts.length - 1);
-  buildList(); draw();
-  if (selectedIdx >= 0) select(selectedIdx);
-});
-
-document.getElementById('add-btn').addEventListener('click', () => {
-  if (selectedIdx < 0) return;
-  const a = pts[selectedIdx];
-  const b = pts[(selectedIdx + 1) % pts.length];
-  const newPt = { x: Math.round((a.x + b.x) / 2 / 5) * 5, z: Math.round((a.z + b.z) / 2 / 5) * 5, label: `${selectedIdx + 1} (new)`, sharp: false };
-  pts.splice(selectedIdx + 1, 0, newPt);
-  pts.forEach((p, i) => { if (/^\d/.test(p.label)) p.label = String(i) + p.label.replace(/^\d+/, ''); });
-  selectedIdx = selectedIdx + 1;
-  buildList(); draw();
-  select(selectedIdx);
-});
-
-// ── Sharp corner toggle ─────────────────────────────────────────────
-document.getElementById('export-btn').insertAdjacentHTML('beforebegin', `
-  <button id="sharp-btn" style="width:100%;margin-bottom:8px;padding:8px;background:rgba(255,200,0,0.08);border:1px solid rgba(255,200,0,0.5);color:#ffdd00;font-family:inherit;font-size:10px;letter-spacing:2px;text-transform:uppercase;cursor:pointer;border-radius:3px">⬥ Toggle sharp corner</button>
-`);
-document.getElementById('sharp-btn').addEventListener('click', () => {
-  if (selectedIdx < 0) return;
-  pts[selectedIdx].sharp = !pts[selectedIdx].sharp;
-  // Update button text to reflect state
-  const btn = document.getElementById('sharp-btn');
-  btn.textContent = pts[selectedIdx].sharp ? '⬥ Sharp: ON' : '⬥ Sharp: OFF';
-  btn.style.background = pts[selectedIdx].sharp ? 'rgba(255,200,0,0.2)' : 'rgba(255,200,0,0.08)';
-  buildList(); draw();
-});
-
-// ── Export ──────────────────────────────────────────────────────────
-document.getElementById('export-btn').addEventListener('click', () => {
-  const lines = pts.map(p =>
-    `  new THREE.Vector3(${String(Math.round(p.x)).padStart(5)}, 0, ${String(Math.round(p.z)).padStart(5)}),  // ${p.label}`
-  ).join('\n');
-  // SHARP_CORNERS is always exported empty: triplicating points with centripetal
-  // mode sets chord length = 0, causing tangent calculation failures and ribbon crossings.
-  const code = `export const CIRCUIT_POINTS = [\n${lines}\n];\n\nexport const SHARP_CORNERS = new Set([\n  // Leave empty — centripetal spline handles all corners cleanly\n]);`;
-  document.getElementById('output-text').textContent = code;
-  document.getElementById('output-modal').classList.add('show');
-});
-
-function updateObjReadout() {
-  const el = document.getElementById('obj-readout');
-  if (!el) return;
-  el.innerHTML = hpcObjs.map(o =>
-    `<div style="margin-bottom:8px;padding:6px 8px;background:rgba(0,0,0,0.3);border-radius:3px;border-left:3px solid ${o.color}">
-       <div style="color:${o.color};font-size:9px;margin-bottom:4px">${o.label}</div>
-       <div style="color:#00ffcc;font-size:10px;letter-spacing:1px">pos: new THREE.Vector3(${Math.round(o.x)}, 0, ${Math.round(o.z)})</div>
-     </div>`
-  ).join('');
-}
-
-// ── Init ────────────────────────────────────────────────────────────
+// ── Init ─────────────────────────────────────────────────────────────
+buildSwatches();
+refresh();
 resize();
-buildList();
-updateObjReadout();
-
 </script>
 </body>
 </html>
