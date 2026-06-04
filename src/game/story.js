@@ -94,18 +94,56 @@ export class StorySystem {
     }
   }
 
-  // ── Voice-over: prefer .mp3 file, fall back to Web Speech API ────
-  _speak(id, text) {
+  // ── Voice-over playlist ───────────────────────────────────────────
+  // Clips play back-to-back, chained via 'ended' events.
+  // Triggered once by the beep zone; no further position zones needed.
+  static get PLAYLIST() {
+    return [
+      { id: 'beep', sector: 'QUALIFICATION LAP',           text: '' },
+      { id: 'set1', sector: 'SECTOR 1 — THE INTRODUCTION', text: "Welcome drivers. Qualification lap, type — Portfolio. Track — Singapore, Marina Bay. I'm Koh Tze Rui, your computer engineer from NUS, and I'll be your guide for today." },
+      { id: 'set2', sector: 'SECTOR 2 — THE PHILOSOPHY',   text: "My professor told me a while back that HPC is the F1 of computing — chasing incremental improvements. Having the fastest car doesn't guarantee the win. It's about how you tune the engine and adapt to the track." },
+      { id: 'set3', sector: 'SECTOR 3 — THE COMPETITION',  text: "My first HPC competition was the Single Board Cluster Competition — we placed 1st internationally. I love the addiction of seeing my benchmark score increase with every change, and the curiosity when it falls. That's when I realised I was addicted to system optimisation." },
+      { id: 'set4', sector: 'SECTOR 4 — THE PROJECTS',     text: "Naturally, in my own time, I tried all forms of optimisation — kernel, hardware, software. This inspired physical projects: CUDA, Linux Kernel, FPGAs. The HPC full stack, all whilst taking courses to improve myself." },
+      { id: 'set5', sector: 'FINAL STRAIGHT — THE INVITATION', text: "I hope you learned something about me during this lap. Are you ready to race?" },
+    ];
+  }
+
+  _startPlaylist(startIndex = 0) {
+    const clip = StorySystem.PLAYLIST[startIndex];
+    if (!clip) return;
+
     this._stopSpeech();
-    this._showCard(text);
-    const audioPath = `/audio/${id}.mp3`;
-    const audio = new Audio(audioPath);
-    audio.addEventListener('canplaythrough', () => {
-      this._activeAudio = audio;
-      audio.play().catch(() => this._tts(text));
-    }, { once: true });
-    audio.addEventListener('error', () => this._tts(text), { once: true });
-    audio.load();
+    this.sectorDisplay.textContent = clip.sector;
+    if (clip.text) this._showCard(clip.text);
+
+    const audio = new Audio(`/audio/${clip.id}.m4a`);
+    this._activeAudio = audio;
+
+    // Chain next clip when this one ends.
+    // beep→set1 is instant (index 0); all other transitions breathe for 50 ms.
+    if (startIndex + 1 < StorySystem.PLAYLIST.length) {
+      const gap = startIndex === 0 ? 0 : 50;
+      audio.addEventListener('ended', () => {
+        setTimeout(() => this._startPlaylist(startIndex + 1), gap);
+      }, { once: true });
+    }
+
+    audio.play().catch(err => console.warn(`Audio ${clip.id} failed:`, err));
+  }
+
+  // ── Voice-over: .m4a files only, no TTS fallback ─────────────────
+  _speak(id, text) {
+    // Beep triggers the whole playlist
+    if (id === 'beep') {
+      this._startPlaylist(0);
+      return;
+    }
+    // Individual clip (not used in normal flow, kept for manual calls)
+    this._stopSpeech();
+    if (text) this._showCard(text);
+    const audio = new Audio(`/audio/${id}.m4a`);
+    this._activeAudio = audio;
+    audio.play().catch(err => console.warn(`Audio ${id} failed:`, err));
   }
 
   _showCard(text) {
@@ -113,36 +151,20 @@ export class StorySystem {
     clearTimeout(this._cardTimer);
     this.voCard.textContent = text;
     this.voCard.classList.remove('hidden');
-    // Hold for 4 seconds then fade out
+    // Hide card after 6 s (longer to match real speech duration)
     this._cardTimer = setTimeout(() => {
       this.voCard.classList.add('hidden');
-    }, 4000);
+    }, 6000);
   }
 
-  _tts(text) {
-    if (!window.speechSynthesis) return;
-    const utt = new SpeechSynthesisUtterance(text);
-    utt.rate  = 0.92;
-    utt.pitch = 1.0;
-    utt.lang  = 'en-GB';
-    // Pick a pleasant voice if available
-    const voices = window.speechSynthesis.getVoices();
-    const preferred = voices.find(v => v.lang.startsWith('en') && v.name.includes('Google'))
-                   || voices.find(v => v.lang.startsWith('en'))
-                   || null;
-    if (preferred) utt.voice = preferred;
-    this._activeSpeech = utt;
-    window.speechSynthesis.speak(utt);
-  }
+  // TTS disabled — real audio files are used exclusively
+  _tts() {}
 
   _stopSpeech() {
     if (this._activeAudio) {
       this._activeAudio.pause();
+      this._activeAudio.currentTime = 0;
       this._activeAudio = null;
-    }
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-      this._activeSpeech = null;
     }
   }
 

@@ -4,7 +4,7 @@ import { createTrack }       from './three/track.js';
 import { createCar }         from './three/car.js';
 import { createEnvironment } from './three/environment.js';
 import { Minimap }           from './three/minimap.js';
-import { createExploreObjects, updateExploreObjects } from './three/objects.js';
+import { createExploreObjects, updateExploreObjects, createPortfolioStations, STATION_CONFIGS } from './three/objects.js';
 import { StorySystem }       from './game/story.js';
 import { HUD }               from './game/hud.js';
 import { GhostRecorder, GhostPlayer } from './game/ghost.js';
@@ -18,10 +18,12 @@ import { TRACK_WIDTH }       from './game/circuit.js';
 const { scene, camera, renderer, composer } = createScene();
 const { curve } = createTrack(scene);
 createEnvironment(scene);
+createPortfolioStations(scene);  // infield portfolio display
 // createBillboards(scene);  // disabled — too ugly
 // createGantry(scene);      // disabled — too ugly
 const car          = createCar(scene);
 const minimap      = new Minimap('minimap-canvas');
+minimap.setMarkers(STATION_CONFIGS);  // show station positions as yellow diamonds
 const story        = new StorySystem(curve);
 const hud          = new HUD();
 const audio        = new CarAudio();

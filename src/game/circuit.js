@@ -85,25 +85,12 @@ export const SPLINE_TENSION  = 0.12;   // very low → tight to control points
 //  STORY ZONES
 // ─────────────────────────────────────────────────────────────────
 export const STORY_ZONES = [
-  { id: 'z1a', t: 0.03, text: "My name is Koh Tze Rui.",
-    sector: "ZONE 1 — THE BEGINNING" },
-  { id: 'z1b', t: 0.12, text: "Year 3 Computer Engineering · NUS.",
-    sector: "ZONE 1 — THE BEGINNING" },
-
-  { id: 'z2a', t: 0.30, text: "I started where everyone does —\nsoftware engineering, quant, chasing the money.",
-    sector: "ZONE 2 — THE SEARCH" },
-  { id: 'z2b', t: 0.42, text: "The work wasn't wrong.\nBut I wasn't building anything real.",
-    sector: "ZONE 2 — THE SEARCH" },
-
-  { id: 'z3a', t: 0.55, text: "Then a friend forwarded me a link.",
-    sector: "ZONE 3 — THE DISCOVERY" },
-  { id: 'z3b', t: 0.66, text: "We built a 12-node SBC cluster.\nFrom bare metal to MPI.",
-    sector: "ZONE 3 — THE DISCOVERY" },
-
-  { id: 'z4a', t: 0.78, text: "HPC is the F1 of computing —\nalways chasing the last microsecond.",
-    sector: "FINAL STRAIGHT — THE COMMITMENT" },
-  { id: 'z4b', t: 0.92, text: "This is my story.\nLet's build something together.",
-    sector: "FINISH LINE" },
+  {
+    id: 'beep',
+    t: 0.0,   // fire at the very start — playlist chains all clips from here
+    text: '',
+    sector: 'QUALIFICATION LAP',
+  },
 ];
 
 // ─────────────────────────────────────────────────────────────────

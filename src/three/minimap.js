@@ -49,6 +49,7 @@ export class Minimap {
     this._trackCanvas = document.createElement('canvas');
     this._trackCanvas.width  = this.W;
     this._trackCanvas.height = this.H;
+    this._markers = [];   // portfolio station markers
     this._preDrawTrack();
   }
 
@@ -121,6 +122,47 @@ export class Minimap {
     ctx.lineTo(sf.mx - Math.cos(ang) * 5, sf.mz - Math.sin(ang) * 5);
     ctx.stroke();
     ctx.restore();
+    // ── Portfolio station markers ──────────────────────────────────
+    this._markers.forEach((m, i) => {
+      const { mx, mz } = this._toMap(m.pos.x, m.pos.z);
+      const r = 5;
+      ctx.save();
+      // Diamond shape
+      ctx.beginPath();
+      ctx.moveTo(mx,     mz - r);
+      ctx.lineTo(mx + r, mz);
+      ctx.lineTo(mx,     mz + r);
+      ctx.lineTo(mx - r, mz);
+      ctx.closePath();
+      ctx.fillStyle   = '#ffdd00';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth   = 1;
+      ctx.fill();
+      ctx.stroke();
+      // Index number
+      ctx.fillStyle    = '#000000';
+      ctx.font         = 'bold 7px sans-serif';
+      ctx.textAlign    = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(i + 1, mx, mz);
+      // Hover label to the right
+      ctx.fillStyle    = '#ffdd00';
+      ctx.font         = '6px sans-serif';
+      ctx.textAlign    = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(m.label || `Station ${i + 1}`, mx + r + 2, mz);
+      ctx.restore();
+    });
+  }
+
+  /**
+   * Register portfolio station markers to display on the minimap.
+   * Call once after minimap creation, passing the STATION_CONFIGS array.
+   * Re-draws the static track canvas so markers appear immediately.
+   */
+  setMarkers(configs) {
+    this._markers = configs;
+    this._preDrawTrack();
   }
 
   draw(carPos) {

@@ -134,7 +134,7 @@
   <!-- HPC object coordinate readout -->
   <div style="margin-top:16px;padding:12px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:4px;font-family:monospace;font-size:10px">
     <div style="color:rgba(255,255,255,0.4);letter-spacing:2px;margin-bottom:10px">// HPC OBJECT PINS</div>
-    <div style="color:rgba(255,255,255,0.5);font-size:9px;margin-bottom:8px">Drag the coloured squares on the canvas.<br>Paste these coords into objects.js.</div>
+    <div style="color:rgba(255,255,255,0.5);font-size:9px;margin-bottom:8px">Drag a dot to position it.<br>Paste the coords into <b style="color:#00ffcc">STATION_CONFIGS</b> in objects.js.</div>
     <div id="obj-readout"></div>
   </div>
 </div>
@@ -201,11 +201,12 @@ function resize() {
 }
 window.addEventListener('resize', resize);
 
-// ── HPC object pins (draggable, shown alongside the circuit) ────────
+// ── Portfolio station pins — keep in sync with STATION_CONFIGS in objects.js ──
+// Drag a dot to find the right infield position, then paste the coords below.
 const hpcObjs = [
-  { id: 'systems', label: 'Systems (PC+Tux)', x: -445, z: -445, color: '#ff7b00' },
-  { id: 'fpga',    label: 'Hardware (FPGA)',  x: -395, z:  390, color: '#ffdd00' },
-  { id: 'gpu',     label: 'GPU Cluster',      x:  190, z:   -4, color: '#ff4488' },
+  { id: 'hpc1', label: '1 HPC CLUSTER', x:  530, z: -100, color: '#ffdd00' },
+  // Add more entries here for each project, e.g.:
+  // { id: 'proj2', label: '2 MY PROJ', x: 0, z: 0, color: '#ff88cc' },
 ];
 
 
@@ -545,6 +546,17 @@ document.getElementById('export-btn').addEventListener('click', () => {
   document.getElementById('output-text').textContent = code;
   document.getElementById('output-modal').classList.add('show');
 });
+
+function updateObjReadout() {
+  const el = document.getElementById('obj-readout');
+  if (!el) return;
+  el.innerHTML = hpcObjs.map(o =>
+    `<div style="margin-bottom:8px;padding:6px 8px;background:rgba(0,0,0,0.3);border-radius:3px;border-left:3px solid ${o.color}">
+       <div style="color:${o.color};font-size:9px;margin-bottom:4px">${o.label}</div>
+       <div style="color:#00ffcc;font-size:10px;letter-spacing:1px">pos: new THREE.Vector3(${Math.round(o.x)}, 0, ${Math.round(o.z)})</div>
+     </div>`
+  ).join('');
+}
 
 // ── Init ────────────────────────────────────────────────────────────
 resize();

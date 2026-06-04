@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CIRCUIT_POINTS } from '../game/circuit.js';
 
 /**
  * Floor decals — flat PNG planes placed on the circuit infield ground.
@@ -76,6 +77,251 @@ export function updateExploreObjects(interactables, carPos) {
   });
 
   return nearest;
+}
+
+// ── Portfolio Stations ─────────────────────────────────────────────
+/**
+ * A "station" = 3 vertical screen panels on stands in a fan arrangement
+ * + large ground text painted below them (like F1 zone markings).
+ *
+ * One test station placed in the infield for visual prototyping.
+ * Replace placeholder content + position with real data when approved.
+ */
+// ── Portfolio Station Definitions ──────────────────────────────────────
+// Single source of truth for both 3D placement and minimap markers.
+// Change pos here to move a station; the minimap dot follows automatically.
+export const STATION_CONFIGS = [
+  {
+    pos:   new THREE.Vector3(480, 0, -460),  // TEST: inside top-right chicane (near T2/T3)
+    label: 'HPC CLUSTER',
+    panels: [
+      makeAboutCanvas('// PROJECT',   'HPC CLUSTER',  '2023 · NUS', 'COMPETITION'),
+      makeDescCanvas('Built a 12-node SBC cluster\nfrom bare metal to MPI.\nOptimised BLAS, memory\nand job scheduling.',
+                     ['MPI', 'OpenMP', 'BLAS', 'C++', 'Linux']),
+      makeResultCanvas('#3', 'REGIONAL FINALS', 'OPEN  ↗'),
+    ],
+    groundText: 'HPC CLUSTER',
+    groundSub:  '── INTERNATIONAL STUDENT CLUSTER COMPETITION ──',
+  },
+];
+
+// ── Auto-orient helper ──────────────────────────────────────────────
+// For a given world position, finds the nearest circuit control point
+// and rotates `group` so its panels face directly toward the track.
+function faceTrack(stationPos, group) {
+  let nearestDist = Infinity;
+  let nearestPt   = CIRCUIT_POINTS[0];
+
+  CIRCUIT_POINTS.forEach(pt => {
+    const d = stationPos.distanceToSquared(pt);
+    if (d < nearestDist) { nearestDist = d; nearestPt = pt; }
+  });
+
+  // Vector from station to nearest track point (XZ only)
+  const dx = nearestPt.x - stationPos.x;
+  const dz = nearestPt.z - stationPos.z;
+
+  // Panels face local +X. Rotate group so local +X → track direction.
+  // Three.js rotateY formula: world +X after rotY(theta) = (cos θ, 0, -sin θ)
+  // → theta = atan2(-dz, dx)
+  group.rotation.y = Math.atan2(-dz, dx);
+}
+
+export function createPortfolioStations(scene) {
+  // ── Sizes (world units) ───────────────────────────────────────
+  const PANEL_W = 11;
+  const PANEL_H =  5;
+  const POST_H  =  1;
+  const FAN_Z   = 13;   // north-south spread between panels
+
+  const steelMat = new THREE.MeshStandardMaterial({ color: 0x2a2a3a, metalness: 0.85, roughness: 0.3 });
+  const backMat  = new THREE.MeshStandardMaterial({ color: 0x06060f, metalness: 0.3, roughness: 0.9 });
+
+  STATION_CONFIGS.forEach(s => {
+    const group = new THREE.Group();
+    group.position.copy(s.pos);
+    faceTrack(s.pos, group);   // auto-orient panels toward nearest track point
+
+    const py = POST_H + PANEL_H / 2 + 1;   // panel centre height
+
+    // All panels face due east (toward the track/driver to the east).
+    // Spread north-south so the driver sees them in sequence while passing.
+    const fanDefs = [
+      { z: -FAN_Z, ry: Math.PI / 2 },   // north panel
+      { z:  0,     ry: Math.PI / 2 },   // centre panel
+      { z: +FAN_Z, ry: Math.PI / 2 },   // south panel
+    ];
+
+    fanDefs.forEach((fd, i) => {
+      const pz = fd.z;
+
+      // Post
+      const post = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.12, 0.15, POST_H, 6),
+        steelMat
+      );
+      post.position.set(0, POST_H / 2, pz);
+      group.add(post);
+
+      // Backing board (thin box, aligned with each panel's rotation)
+      const back = new THREE.Mesh(
+        new THREE.BoxGeometry(0.5, PANEL_H + 1, PANEL_W + 1),
+        backMat
+      );
+      back.position.set(-0.3, py, pz);
+      back.rotation.y = fd.ry - Math.PI / 2;
+      group.add(back);
+
+      // Screen face
+      const tex  = new THREE.CanvasTexture(s.panels[i]);
+      tex.colorSpace = THREE.SRGBColorSpace;
+      const face = new THREE.Mesh(
+        new THREE.PlaneGeometry(PANEL_W, PANEL_H),
+        new THREE.MeshBasicMaterial({ map: tex, side: THREE.DoubleSide })
+      );
+      face.position.set(0, py, pz);
+      face.rotation.y = fd.ry;
+      group.add(face);
+
+      // Screen glow
+      const glow = new THREE.PointLight(0x0088ff, 0.3, 25);
+      glow.position.set(3, py, pz);
+      group.add(glow);
+    });
+
+    // ── Ground text east of panels (toward track) ─────────────────
+    const gtCv  = makeGroundCanvas(s.groundText, s.groundSub);
+    const gtTex = new THREE.CanvasTexture(gtCv);
+    gtTex.colorSpace = THREE.SRGBColorSpace;
+    const ground = new THREE.Mesh(
+      new THREE.PlaneGeometry(40, 10),
+      new THREE.MeshBasicMaterial({ map: gtTex, transparent: true, depthWrite: false })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    ground.rotation.z =  Math.PI / 2;
+    ground.position.set(10, 0.18, 0);
+    group.add(ground);
+
+    // ── Locator light ─────────────────────────────────────────────
+    const overhead = new THREE.PointLight(0x00ffcc, 2, 400);
+    overhead.position.set(0, 30, 0);
+    group.add(overhead);
+
+    scene.add(group);
+  });
+}
+
+// ── Canvas helpers ─────────────────────────────────────────────────
+
+function panelBase() {
+  // 512×256 matches the panel's ~2.2:1 world aspect ratio (11×5 units)
+  const W = 512, H = 256;
+  const cv  = document.createElement('canvas');
+  cv.width  = W; cv.height = H;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = '#06060f';
+  ctx.fillRect(0, 0, W, H);
+  // Cyan top accent bar
+  ctx.fillStyle = '#00ffcc';
+  ctx.fillRect(0, 0, W, 6);
+  // Subtle border
+  ctx.strokeStyle = 'rgba(0,255,204,0.25)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(1, 1, W - 2, H - 2);
+  return { cv, ctx, W, H };
+}
+
+function makeAboutCanvas(label, title, year, subtitle) {
+  const { cv, ctx } = panelBase();
+  // Label
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText(label, 22, 38);
+  // Title — big and bold
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 72px Arial, sans-serif';
+  ctx.fillText(title, 22, 126);
+  // Subtitle
+  ctx.fillStyle = '#aaaacc';
+  ctx.font = '24px monospace';
+  ctx.fillText(subtitle, 22, 162);
+  // Year
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 30px monospace';
+  ctx.fillText(year, 22, 205);
+  // Divider
+  ctx.fillStyle = '#1a1a2e';
+  ctx.fillRect(22, 218, 468, 2);
+  return cv;
+}
+
+function makeDescCanvas(desc, tags) {
+  const { cv, ctx } = panelBase();
+  // Label
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText('// WHAT I DID', 22, 38);
+  // Body text — larger, fewer lines
+  ctx.fillStyle = '#e0e0ee';
+  ctx.font = '26px Arial, sans-serif';
+  desc.split('\n').forEach((line, i) => ctx.fillText(line, 22, 78 + i * 36));
+  // Tag pills
+  let tx = 22, ty = 205;
+  ctx.font = 'bold 20px monospace';
+  tags.forEach(tag => {
+    const tw = ctx.measureText(tag).width + 20;
+    if (tx + tw > 492) { tx = 22; ty += 34; }
+    ctx.strokeStyle = '#00ffcc';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(tx, ty, tw, 30);
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillText(tag, tx + 10, ty + 21);
+    tx += tw + 8;
+  });
+  return cv;
+}
+
+function makeResultCanvas(big, label, cta) {
+  const { cv, ctx } = panelBase();
+  // Label
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 20px monospace';
+  ctx.fillText('// RESULT', 22, 38);
+  // Big result number
+  ctx.fillStyle = '#00ffcc';
+  ctx.font = 'bold 120px Arial, sans-serif';
+  ctx.fillText(big, 22, 162);
+  // Sub-label
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 26px monospace';
+  ctx.fillText(label, 22, 200);
+  // CTA button
+  ctx.strokeStyle = 'rgba(255,255,255,0.8)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(22, 216, 180, 34);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px monospace';
+  ctx.fillText(cta, 38, 238);
+  return cv;
+}
+
+function makeGroundCanvas(title, sub) {
+  const cv  = document.createElement('canvas');
+  cv.width  = 1024; cv.height = 256;
+  const ctx = cv.getContext('2d');
+  ctx.clearRect(0, 0, 1024, 256);
+
+  // Main title
+  ctx.fillStyle = 'rgba(0,0,0,0.92)';
+  ctx.font = 'bold 108px Arial, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(title, 512, 118);
+
+  // Subtitle
+  ctx.fillStyle = 'rgba(0,0,0,0.65)';
+  ctx.font = '22px monospace';
+  ctx.fillText(sub, 512, 172);
+  return cv;
 }
 
 // ── Floor Decals (commented out — testing billboards/gantries instead) ──
