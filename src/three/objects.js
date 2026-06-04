@@ -92,10 +92,10 @@ export function updateExploreObjects(interactables, carPos) {
 // Change pos here to move a station; the minimap dot follows automatically.
 export const STATION_CONFIGS = [
   {
-    pos: new THREE.Vector3(-600, 0, -245),
+    pos:   new THREE.Vector3(-600, 0, -245),
     label: 'SBCC26',
-    org: 'SINGLE BOARD CLUSTER COMPETITION 2026',
-    desc: 'BUILT A 17-NODE ORANGE PI MAX CLUSTER FROM SCRATCH.\nWON SBCC\'26 IN COMPETITION DEBUT.\nTEAM KENT RIDGE · NUS COMPUTING',
+    org:   'SINGLE BOARD CLUSTER COMPETITION 2026',
+    desc:  'BUILT A 17-NODE ORANGE PI MAX CLUSTER FROM SCRATCH.\nWON SBCC\'26 IN COMPETITION DEBUT.\nTEAM KENT RIDGE · NUS COMPUTING',
     panels: [
       makeImageCanvas('/img/SBCC26/sbcc26-win.png'),          // Team Kent Ridge wins poster
       makeImageCanvas('/img/SBCC26/sbcc26-architecture.png'), // Cluster architecture diagram
@@ -103,11 +103,43 @@ export const STATION_CONFIGS = [
     ],
   },
   {
-    pos: new THREE.Vector3(-630, 0, -295),
+    pos:   new THREE.Vector3(-630, 0, -295),
     label: 'AI-HPC26',
     panels: [
       makeAboutCanvas('', 'HPC COMP', '2026 · NUS · Team Kent Ridge', 'COMPETITION'),
       makeAboutCanvas('// DETAILS', 'HPC COMP', '', ''),
+    ],
+  },
+  {
+    pos:   new THREE.Vector3(-300, 0, -20),
+    label: 'CUDA MATRIX MULTIPLICATION',
+    panels: [
+      makeAboutCanvas('', 'CUDA MATRIX MULTIPLICATION', '2026', 'PROJECT'),
+      makeAboutCanvas('// DETAILS', 'CUDA MATRIX MULTIPLICATION', '', ''),
+    ],
+  },
+  {
+    pos:   new THREE.Vector3(-225, 0, -15),
+    label: 'FPGA MATRIX CALCULATION',
+    panels: [
+      makeAboutCanvas('// PROJECT', 'FPGA MATRIX CALCULATION', '2026', 'PROJECT'),
+      makeAboutCanvas('// DETAILS', 'FPGA MATRIX CALCULATION', '', ''),
+    ],
+  },
+  {
+    pos:   new THREE.Vector3(165, 0, 70),
+    label: 'RHCSA',
+    panels: [
+      makeAboutCanvas('', 'RED HAT CERTIFIED SYSTEMS ADMIN', '2026', 'CERTIFICATION'),
+      makeAboutCanvas('// DETAILS', 'RED HAT CERTIFIED SYSTEMS ADMIN', '', ''),
+    ],
+  },
+  {
+    pos:   new THREE.Vector3(195, 0, 100),
+    label: 'NCP - AIIO',
+    panels: [
+      makeAboutCanvas('// PROJECT', 'NVIDIA AI INFRA. & OPS', '2026', 'CERTIFICATION'),
+      makeAboutCanvas('// DETAILS', 'NVIDIA AI INFRA. & OPS', '', ''),
     ],
   },
 ];
