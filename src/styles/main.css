@@ -556,3 +556,28 @@ html, body {
   padding-top: 12px;
 }
 
+
+#loading-status {
+  margin-top: 18px;
+  min-height: 16px;
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 3px;
+  color: rgba(255, 255, 255, 0.38);
+  text-transform: uppercase;
+}
+#loading-status.ready {
+  color: var(--cyan);
+  text-shadow: 0 0 12px var(--cyan-glow);
+}
+.mode-btn:disabled {
+  cursor: wait;
+  opacity: 0.45;
+  filter: grayscale(0.8);
+  transform: none;
+  box-shadow: none;
+}
+.mode-btn:disabled:hover {
+  transform: none;
+  box-shadow: none;
+}

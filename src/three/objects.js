@@ -93,57 +93,71 @@ export function updateExploreObjects(interactables, carPos) {
 export const STATION_CONFIGS = [
   {
     pos:   new THREE.Vector3(-600, 0, -245),
-    label: 'SBCC26',
-    org:   'SINGLE BOARD CLUSTER COMPETITION 2026',
-    desc:  'BUILT A 17-NODE ORANGE PI MAX CLUSTER FROM SCRATCH.\nWON SBCC\'26 IN COMPETITION DEBUT.\nTEAM KENT RIDGE · NUS COMPUTING',
-    panels: [
-      makeImageCanvas('/img/SBCC26/sbcc26-win.png'),          // Team Kent Ridge wins poster
-      makeImageCanvas('/img/SBCC26/sbcc26-architecture.png'), // Cluster architecture diagram
-      makeImageCanvas('/img/SBCC26/sbcc26-cluster.png'),      // Physical cluster photo
+    label: 'T1 BRAKE',
+    org:   'HEAVY BRAKING ZONE',
+    desc:  'BRAKE IN A STRAIGHT LINE.\nROLL OFF BEFORE TURN-IN.\nA CLEAN EXIT BEATS A HERO ENTRY.',
+    panels: () => [
+      makeAboutCanvas('// SECTOR 1', 'BRAKE POINT', 'TURN 1', 'TRACK TIP'),
+      makeAboutCanvas('// TECHNIQUE', 'TRAIL BRAKE', 'LIGHT INPUTS', 'CONTROL'),
+      makeAboutCanvas('// TARGET', 'CLEAN EXIT', 'FULL THROTTLE EARLY', 'TIME ATTACK'),
     ],
   },
   {
     pos:   new THREE.Vector3(-630, 0, -295),
-    label: 'AI-HPC26',
-    panels: [
-      makeAboutCanvas('', 'HPC COMP', '2026 · NUS · Team Kent Ridge', 'COMPETITION'),
-      makeAboutCanvas('// DETAILS', 'HPC COMP', '', ''),
+    label: 'APEX',
+    org:   'CORNER PHASE',
+    desc:  'LOOK THROUGH THE CORNER.\nCLIP THE INSIDE KERB LIGHTLY.\nUNWIND STEERING ON EXIT.',
+    panels: () => [
+      makeAboutCanvas('// CORNER', 'APEX', 'MID-CORNER', 'LINE'),
+      makeAboutCanvas('// RHYTHM', 'SMOOTH HANDS', 'NO PANIC', 'GRIP'),
+      makeAboutCanvas('// EXIT', 'OPEN WHEEL', 'BUILD SPEED', 'FLOW'),
     ],
   },
   {
     pos:   new THREE.Vector3(-300, 0, -20),
-    label: 'CUDA MATRIX MULTIPLICATION',
-    panels: [
-      makeAboutCanvas('', 'CUDA MATRIX MULTIPLICATION', '2026', 'PROJECT'),
-      makeAboutCanvas('// DETAILS', 'CUDA MATRIX MULTIPLICATION', '', ''),
+    label: 'SPLIT 1',
+    org:   'REFERENCE DELTA',
+    desc:  'COMPARE AGAINST THE GHOST.\nSMALLER STEERING ANGLES SAVE SPEED.\nKEEP THE CAR SETTLED.',
+    panels: () => [
+      makeAboutCanvas('// TIMING', 'SPLIT 1', 'CHASE THE GHOST', 'DELTA'),
+      makeAboutCanvas('// RACECRAFT', 'MINIMIZE SLIDE', 'SAVE SPEED', 'FOCUS'),
+      makeAboutCanvas('// GOAL', 'GREEN DELTA', 'BEAT THE LAP', 'PUSH'),
     ],
   },
   {
     pos:   new THREE.Vector3(-225, 0, -15),
-    label: 'FPGA MATRIX CALCULATION',
-    panels: [
-      makeAboutCanvas('// PROJECT', 'FPGA MATRIX CALCULATION', '2026', 'PROJECT'),
-      makeAboutCanvas('// DETAILS', 'FPGA MATRIX CALCULATION', '', ''),
+    label: 'KERB',
+    org:   'TRACK LIMITS',
+    desc:  'KERBS ARE FAST ONLY WHEN STRAIGHT.\nRUNOFF COSTS ACCELERATION.\nWALLS KILL MOMENTUM.',
+    panels: () => [
+      makeAboutCanvas('// LIMITS', 'KERBS', 'USE CAREFULLY', 'SURFACE'),
+      makeAboutCanvas('// WARNING', 'RUNOFF DRAG', 'LOW GRIP', 'PENALTY'),
+      makeAboutCanvas('// RESET', 'STAY ON LINE', 'KEEP MOMENTUM', 'CONTROL'),
     ],
   },
   {
     pos:   new THREE.Vector3(165, 0, 70),
-    label: 'RHCSA',
-    panels: [
-      makeAboutCanvas('', 'RED HAT CERTIFIED SYSTEMS ADMIN', '2026', 'CERTIFICATION'),
-      makeAboutCanvas('// DETAILS', 'RED HAT CERTIFIED SYSTEMS ADMIN', '', ''),
+    label: 'FINAL',
+    org:   'LAST SECTOR',
+    desc:  'SET UP THE STRAIGHT.\nPRIORITIZE EXIT SPEED.\nEVERY KM/H COUNTS TO THE LINE.',
+    panels: () => [
+      makeAboutCanvas('// SECTOR 3', 'FINAL PUSH', 'LAST CHANCE', 'COMMIT'),
+      makeAboutCanvas('// EXIT', 'THROTTLE EARLY', 'OPEN STEERING', 'SPEED'),
+      makeAboutCanvas('// LINE', 'DON\'T LIFT', 'FINISH STRONG', 'TIME'),
     ],
   },
   {
     pos:   new THREE.Vector3(195, 0, 100),
-    label: 'NCP - AIIO',
-    panels: [
-      makeAboutCanvas('// PROJECT', 'NVIDIA AI INFRA. & OPS', '2026', 'CERTIFICATION'),
-      makeAboutCanvas('// DETAILS', 'NVIDIA AI INFRA. & OPS', '', ''),
+    label: 'GARAGE',
+    org:   'POST-RUN REVIEW',
+    desc:  'CHECK YOUR DELTA.\nTRY A DIFFERENT BRAKE MARKER.\nRUN IT BACK CLEANER.',
+    panels: () => [
+      makeAboutCanvas('// GARAGE', 'ANALYZE', 'FIND TENTHS', 'REVIEW'),
+      makeAboutCanvas('// SETUP', 'SMOOTHER LINE', 'LESS SCRUB', 'ADJUST'),
+      makeAboutCanvas('// NEXT RUN', 'ONE MORE LAP', 'ONE MORE TENTH', 'RETRY'),
     ],
   },
 ];
-
 // ── Auto-orient helper ──────────────────────────────────────────────
 // Rotates `group` so panels run PARALLEL to the track and their screen
 // face points inward toward the road (visible to a passing driver).
@@ -207,6 +221,7 @@ export function createPortfolioStations(scene) {
 
   STATION_CONFIGS.forEach(s => {
     const group = new THREE.Group();
+    const panels = typeof s.panels === 'function' ? s.panels() : s.panels;
     group.position.copy(s.pos);
     faceTrack(s.pos, group);   // auto-orient panels toward nearest track point
 
@@ -233,7 +248,7 @@ export function createPortfolioStations(scene) {
       group.add(back);
 
       // Screen face
-      const panelCanvas = s.panels[i];
+      const panelCanvas = panels[i] || makeAboutCanvas('// TRACKSIDE', s.label || 'RACE', '', 'SIGNAGE');
       const tex = new THREE.CanvasTexture(panelCanvas);
       tex.colorSpace = THREE.SRGBColorSpace;
       // Back-reference so async image loads can trigger needsUpdate

@@ -100,87 +100,67 @@ export class StorySystem {
   static get PLAYLIST() {
     return [
       {
-        id: 'beep', sector: 'QUALIFICATION LAP',
-        durationMs: 1000, lines: [],
+        id: 'beep', sector: 'FORMATION LAP',
+        durationMs: 900, lines: [],
       },
       {
-        id: 'set1', sector: 'SECTOR 1 — THE INTRODUCTION',
-        durationMs: 12000,
+        id: 'race-control-1', sector: 'SECTOR 1 - BRAKE POINTS', audio: false,
+        durationMs: 9000,
         lines: [
-          { text: "Welcome drivers. Qualification lap, type — Portfolio.", at: 0 },
-          { text: "Track — Singapore, Marina Bay Sands.", at: 4000 },
-          { text: "I'm Koh Tze Rui, your Computer engineer from NUS, and I'll be your guide for today.", at: 6500 },
+          { text: 'Race control: ghost car is away. Watch the braking markers.', at: 0 },
+          { text: 'Keep the car straight on the brakes, then rotate cleanly.', at: 3600 },
+          { text: 'Runoff will cost acceleration. The fast lap stays tidy.', at: 6500 },
         ],
       },
       {
-        id: 'set2', sector: 'SECTOR 2 — THE PHILOSOPHY',
-        durationMs: 15000,
+        id: 'race-control-2', sector: 'SECTOR 2 - RHYTHM', audio: false,
+        durationMs: 11000,
         lines: [
-          { text: "My professor told me while back that HPC is the F1 of computing and I love that line because of chasing incremental improvements.", at: 0 },
-          { text: "Similarly, having the fastest car doesn't guarantee the win.", at: 8500 },
-          { text: "It's about how you tune the engine and adapt to the track as well.", at: 12000 },
+          { text: 'This middle sector is all rhythm. Small inputs, early exits.', at: 0 },
+          { text: 'Use the kerbs lightly. If the car slides, you are losing time.', at: 4300 },
+          { text: 'Stay close enough to the ghost to learn the line.', at: 7600 },
         ],
       },
       {
-        id: 'set3', sector: 'SECTOR 3 — THE COMPETITION',
-        durationMs: 20000,
+        id: 'race-control-3', sector: 'FINAL SECTOR - COMMIT', audio: false,
+        durationMs: 8000,
         lines: [
-          { text: "My first HPC competition was the Single Board Cluster Competition were we placed 1st internationally.", at: 0 },
-          { text: "I love the addiction of seeing my benchmark score increase with every change, and the curiosity when it insights in me when it falls after a different configuration.", at: 7200 },
-          { text: "That's when I realised I was addicted to system optimisations.", at: 16300 },
-        ],
-      },
-      {
-        id: 'set4', sector: 'SECTOR 4 — THE PROJECTS',
-        durationMs: 24000,
-        lines: [
-          { text: "Naturally, in my own time, I tried all forms of optimisations mainly kernel, hardware, and software.", at: 0 },
-          { text: "All of which gave me a jolt of passion every time I learn a new configuration and use case", at: 7700 },
-          { text: "This inspired me to start physical projects to learn frameworks like CUDA, Linux Kernel, tinker with FPGAs.", at: 13000 },
-          { text: "Basically the HPC full stack, all whilst taking courses to improve myself.", at: 19500 },
-        ],
-      },
-      {
-        id: 'set5', sector: 'FINAL STRAIGHT — THE INVITATION',
-        durationMs: 4000,
-        lines: [
-          { text: "I hope you learned something about me during this lap.", at: 0 },
-          { text: "Are you ready to race?", at: 2000 },
+          { text: 'Final sector. Set up the straight and carry speed to the line.', at: 0 },
+          { text: 'When you take control, beat the ghost lap.', at: 4200 },
         ],
       },
     ];
   }
-
   _startPlaylist(startIndex = 0) {
     const clip = StorySystem.PLAYLIST[startIndex];
     if (!clip) return;
 
     this._stopSpeech();
     this.sectorDisplay.textContent = clip.sector;
-
-    // Schedule each sentence evenly across the clip's duration
     this._scheduleLines(clip.lines, clip.durationMs);
+
+    const playNext = () => {
+      if (startIndex + 1 < StorySystem.PLAYLIST.length) {
+        const gap = startIndex === 0 ? 0 : 80;
+        this._clipTimer = setTimeout(() => this._startPlaylist(startIndex + 1), gap);
+      } else if (this.voCard) {
+        this._clipTimer = setTimeout(() => this.voCard.classList.add('hidden'), 900);
+      }
+    };
+
+    if (clip.audio === false) {
+      this._clipTimer = setTimeout(playNext, clip.durationMs);
+      return;
+    }
 
     const audio = new Audio(`/audio/${clip.id}.m4a`);
     this._activeAudio = audio;
-
-    // Chain next clip when this one ends.
-    // beep→set1 is instant; all other transitions breathe for 50 ms.
-    if (startIndex + 1 < StorySystem.PLAYLIST.length) {
-      const gap = startIndex === 0 ? 0 : 50;
-      audio.addEventListener('ended', () => {
-        setTimeout(() => this._startPlaylist(startIndex + 1), gap);
-      }, { once: true });
-    } else {
-      // Last clip — hide card after it finishes
-      audio.addEventListener('ended', () => {
-        if (this.voCard) this.voCard.classList.add('hidden');
-      }, { once: true });
-    }
-
-    audio.play().catch(err => console.warn(`Audio ${clip.id} failed:`, err));
+    audio.addEventListener('ended', playNext, { once: true });
+    audio.play().catch(err => {
+      console.warn(`Audio ${clip.id} failed:`, err);
+      playNext();
+    });
   }
-
   // Schedule subtitle lines. Each line can be a plain string (even spacing)
   // or an object { text, at } where `at` is an explicit ms offset from clip start.
   _scheduleLines(lines, totalMs) {
@@ -201,6 +181,7 @@ export class StorySystem {
     this._subtitleTimers.forEach(id => clearTimeout(id));
     this._subtitleTimers = [];
     clearTimeout(this._cardTimer);
+    clearTimeout(this._clipTimer);
   }
 
   // ── Voice-over: .m4a files only, no TTS fallback ─────────────────
@@ -221,6 +202,7 @@ export class StorySystem {
   _showCard(text) {
     if (!this.voCard) return;
     clearTimeout(this._cardTimer);
+    clearTimeout(this._clipTimer);
     this.voCard.textContent = text;
     this.voCard.classList.remove('hidden');
     // No auto-hide — card is cleared by _clearSubtitleTimers() on next clip
